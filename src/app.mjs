@@ -28,7 +28,9 @@ import GamificationRouter from "./pages/dashboard/GamificationRoute.mjs";
 dotenv.config();
 
 connectDB();
-startCronJobs();
+if (!process.env.VERCEL) {
+  startCronJobs();
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,9 +57,7 @@ const corsOptions = {
       callback(new Error("Not allowed by CORS"));
     }
   },
-  credentials: true,
-  // --- ADD THIS SINGLE LINE ---
-  allowedHeaders: ["Content-Type", "Authorization", "x-session-token"],
+  credentials: true
 };
 
 app.use(morgan("dev"));
