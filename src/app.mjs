@@ -23,6 +23,7 @@ import NotificationRouter from "./pages/notifications/notificationRoute.mjs";
 import ActivityRouter from "./pages/activity/activityRoute.mjs";
 import Public from "./pages/public/public.mjs";
 import Galery from "./pages/galery/galeryRoute.mjs";
+import GamificationRouter from "./pages/dashboard/GamificationRoute.mjs";
 
 dotenv.config();
 
@@ -92,6 +93,7 @@ app.use("/event", EventRouter);
 app.use("/dashboard", DashboardRouter);
 app.use("/notification", NotificationRouter);
 app.use("/activity", ActivityRouter);
+app.use("/gamification", GamificationRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Route not found" });
