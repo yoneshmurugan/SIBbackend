@@ -6,7 +6,8 @@ import {
     OneToOneMeeting, 
     Referral, 
     TYFTB,
-    Meeting
+    Meeting,
+    MemberProfile
 } from "../../schemas.mjs";
 import { authenticateCookie } from "../../middlewares.mjs";
 
@@ -20,13 +21,20 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
         const memberships = await Membership.find({ 
             chapter_id: chapterId, 
             membership_status: true 
-        }).populate('user_id', 'username profile_image_url');
+        }).populate('user_id', 'username');
 
         if (!memberships.length) {
             return res.status(200).json([]);
         }
 
         const userIds = memberships.map(m => m.user_id._id);
+
+        // Fetch MemberProfiles for avatars
+        const profiles = await MemberProfile.find({ user_id: { $in: userIds } }, 'user_id profile_image_url');
+        const profileMap = {};
+        profiles.forEach(p => {
+            profileMap[p.user_id.toString()] = p.profile_image_url;
+        });
 
         // 2. Fetch stats using parallel Promise.all for incredible speed
         const [
@@ -87,7 +95,7 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
             return {
                 id: uIdStr,
                 name: m.user_id.username,
-                avatar: m.user_id.profile_image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.user_id.username)}&background=random`,
+                avatar: profileMap[uIdStr] || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.user_id.username)}&background=random`,
                 chapter: req.chapter?.chapter_name || "Chapter",
                 points,
                 stats: {
