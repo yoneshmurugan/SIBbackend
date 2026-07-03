@@ -20,7 +20,7 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
         const memberships = await Membership.find({ 
             chapter_id: chapterId, 
             membership_status: true 
-        }).populate('user_id', 'username profile_image');
+        }).populate('user_id', 'username profile_image_url');
 
         if (!memberships.length) {
             return res.status(200).json([]);
@@ -87,7 +87,7 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
             return {
                 id: uIdStr,
                 name: m.user_id.username,
-                avatar: m.user_id.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.user_id.username)}&background=random`,
+                avatar: m.user_id.profile_image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.user_id.username)}&background=random`,
                 chapter: req.chapter?.chapter_name || "Chapter",
                 points,
                 stats: {
