@@ -8,11 +8,11 @@ import {
     TYFTB,
     Meeting
 } from "../../schemas.mjs";
-import { sessionAuth } from "../../middlewares.mjs";
+import { authenticateCookie } from "../../middlewares.mjs";
 
 const router = express.Router();
 
-router.get("/leaderboard", sessionAuth, async (req, res) => {
+router.get("/leaderboard", authenticateCookie, async (req, res) => {
     try {
         const chapterId = req.chapter._id;
 
