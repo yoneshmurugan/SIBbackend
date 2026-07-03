@@ -29,12 +29,24 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
 
         const userIds = memberships.map(m => m.user_id._id);
 
-        // Fetch MemberProfiles for avatars
-        const profiles = await MemberProfile.find({ user_id: { $in: userIds } }, 'user_id profile_image_url');
+        // Fetch MemberProfiles for avatars and profile IDs
+        const profiles = await MemberProfile.find({ user_id: { $in: userIds } }, '_id user_id profile_image_url company_name');
         const profileMap = {};
         profiles.forEach(p => {
-            profileMap[p.user_id.toString()] = p.profile_image_url;
+            profileMap[p.user_id.toString()] = {
+                profile_id: p._id.toString(),
+                avatar: p.profile_image_url,
+                company_name: p.company_name
+            };
         });
+
+        // Current month bounds for filtering
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const endOfMonth = new Date(startOfMonth);
+        endOfMonth.setMonth(endOfMonth.getMonth() + 1);
 
         // 2. Fetch stats using parallel Promise.all for incredible speed
         const [
@@ -46,26 +58,26 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
         ] = await Promise.all([
             // Attendance
             Attendance.aggregate([
-                { $match: { user_id: { $in: userIds }, attendance_status: 'present' } },
+                { $match: { user_id: { $in: userIds }, attendance_status: 'present', date: { $gte: startOfMonth, $lt: endOfMonth } } },
                 { $group: { _id: "$user_id", count: { $sum: 1 } } }
             ]),
             // M2M
             OneToOneMeeting.aggregate([
-                { $match: { created_by: { $in: userIds }, status: true } },
+                { $match: { created_by: { $in: userIds }, status: true, meeting_date: { $gte: startOfMonth, $lt: endOfMonth } } },
                 { $group: { _id: "$created_by", count: { $sum: 1 } } }
             ]),
             // Referrals
             Referral.aggregate([
-                { $match: { created_by: { $in: userIds }, status: true } },
+                { $match: { created_by: { $in: userIds }, status: true, created_at: { $gte: startOfMonth, $lt: endOfMonth } } },
                 { $group: { _id: "$created_by", count: { $sum: 1 } } }
             ]),
             // TYFTB
             TYFTB.aggregate([
-                { $match: { payer_id: { $in: userIds }, status: true } },
+                { $match: { payer_id: { $in: userIds }, status: true, created_at: { $gte: startOfMonth, $lt: endOfMonth } } },
                 { $group: { _id: "$payer_id", count: { $sum: 1 } } }
             ]),
-            // Total meetings for attendance logic
-            Meeting.countDocuments({ chapter_id: chapterId })
+            // Total meetings for attendance logic (for current month)
+            Meeting.countDocuments({ chapter_id: chapterId, meeting_date: { $gte: startOfMonth, $lt: endOfMonth } })
         ]);
 
         // Helper to convert aggregation array to map
@@ -92,11 +104,14 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
 
             const points = (m2mCount * 10) + (refCount * 20) + (tybCount * 30) + (attCount * 50);
 
+            const profileInfo = profileMap[uIdStr] || {};
+
             return {
-                id: uIdStr,
+                id: profileInfo.profile_id || uIdStr,
+                user_id: uIdStr,
                 name: m.user_id.username,
-                avatar: profileMap[uIdStr] || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.user_id.username)}&background=random`,
-                chapter: req.chapter?.chapter_name || "Chapter",
+                avatar: profileInfo.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.user_id.username)}&background=random`,
+                company: profileInfo.company_name || req.chapter?.chapter_name || "SIB Member",
                 points,
                 stats: {
                     attendance: attCount,
