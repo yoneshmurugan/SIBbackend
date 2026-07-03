@@ -175,7 +175,7 @@ router.get("/user-badges/:id", authenticateCookie, async (req, res) => {
 
 import { manuallyTriggerBadgeAwards } from "../../utils/cronJobs.mjs";
 
-router.post("/test-award-badges", async (req, res) => {
+router.get("/test-award-badges", async (req, res) => {
     try {
         await manuallyTriggerBadgeAwards();
         res.status(200).json({ message: "Badges awarded successfully!" });
