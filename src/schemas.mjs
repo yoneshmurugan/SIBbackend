@@ -1050,7 +1050,6 @@ const gallerySchema = new Schema({
 
 export const Gallery = mongoose.model('galleries', gallerySchema);
 
-export const MemberGallery = mongoose.model('member_gallery', memberGallerySchema);
 
 const earnedBadgeSchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'users', required: true },
