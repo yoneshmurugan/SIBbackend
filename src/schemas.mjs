@@ -1049,3 +1049,16 @@ const gallerySchema = new Schema({
 });
 
 export const Gallery = mongoose.model('galleries', gallerySchema);
+
+export const MemberGallery = mongoose.model('member_gallery', memberGallerySchema);
+
+const earnedBadgeSchema = new mongoose.Schema({
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'users', required: true },
+    chapter_id: { type: mongoose.Schema.Types.ObjectId, ref: 'chapters', required: true },
+    badge_type: { type: String, required: true }, // 'month_winner', 'runner_up', 'highest_referral', 'highest_tyb', 'highest_m2m', 'full_attendance'
+    month: { type: Number, required: true }, // 1-12
+    year: { type: Number, required: true },
+    awarded_at: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+export const EarnedBadge = mongoose.model('EarnedBadge', earnedBadgeSchema);

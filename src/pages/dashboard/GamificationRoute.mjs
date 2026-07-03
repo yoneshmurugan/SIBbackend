@@ -7,7 +7,8 @@ import {
     Referral, 
     TYFTB,
     Meeting,
-    MemberProfile
+    MemberProfile,
+    EarnedBadge
 } from "../../schemas.mjs";
 import { authenticateCookie } from "../../middlewares.mjs";
 
@@ -38,6 +39,15 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
                 avatar: p.profile_image_url,
                 company_name: p.company_name
             };
+        });
+
+        // Fetch historically earned badges
+        const historicalBadges = await EarnedBadge.find({ user_id: { $in: userIds }, chapter_id: chapterId });
+        const badgesMap = {};
+        historicalBadges.forEach(b => {
+            const uId = b.user_id.toString();
+            if(!badgesMap[uId]) badgesMap[uId] = [];
+            badgesMap[uId].push(b.badge_type);
         });
 
         // Current month bounds for filtering
@@ -122,7 +132,7 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
                     referrals: refCount,
                     tyfcb: tybCount
                 },
-                badges: []
+                badges: badgesMap[uIdStr] || []
             };
         });
 
@@ -134,26 +144,44 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
             user.rank = index + 1;
         });
 
-        // 5. Calculate Highest Badges
-        const maxRef = Math.max(...leaderboard.map(u => u.stats.referrals), 0);
-        const maxM2M = Math.max(...leaderboard.map(u => u.stats.m2m), 0);
-        const maxTyb = Math.max(...leaderboard.map(u => u.stats.tyfcb), 0);
-
-        leaderboard.forEach(user => {
-            if (user.stats.referrals === maxRef && maxRef > 0) user.badges.push({ type: 'highest_referral', label: 'Highest Referrals' });
-            if (user.stats.m2m === maxM2M && maxM2M > 0) user.badges.push({ type: 'highest_m2m', label: 'Highest M2M' });
-            if (user.stats.tyfcb === maxTyb && maxTyb > 0) user.badges.push({ type: 'highest_tyb', label: 'Highest TYB' });
-            
-            // 100% Attendance Logic
-            if (user.stats.attendance > 0 && user.stats.attendance >= totalMeetings) {
-                user.badges.push({ type: 'perfect_attendance', label: '100% Attendance', value: '2x' }); // Mocking the '2x' for now since we count all meetings
-            }
-        });
-
         res.status(200).json(leaderboard);
     } catch (err) {
         console.error("Gamification Error:", err);
         res.status(500).json({ error: "Failed to calculate gamification stats" });
+    }
+});
+
+router.get("/my-badges", authenticateCookie, async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const badges = await EarnedBadge.find({ user_id: userId }).sort({ awarded_at: -1 });
+        res.status(200).json(badges);
+    } catch (err) {
+        console.error("My Badges Error:", err);
+        res.status(500).json({ error: "Failed to fetch badges" });
+    }
+});
+
+router.get("/user-badges/:id", authenticateCookie, async (req, res) => {
+    try {
+        const userId = req.params.id; // User Object ID
+        const badges = await EarnedBadge.find({ user_id: userId }).sort({ awarded_at: -1 });
+        res.status(200).json(badges);
+    } catch (err) {
+        console.error("User Badges Error:", err);
+        res.status(500).json({ error: "Failed to fetch user badges" });
+    }
+});
+
+import { manuallyTriggerBadgeAwards } from "../../utils/cronJobs.mjs";
+
+router.post("/test-award-badges", async (req, res) => {
+    try {
+        await manuallyTriggerBadgeAwards();
+        res.status(200).json({ message: "Badges awarded successfully!" });
+    } catch (err) {
+        console.error("Test Award Badges Error:", err);
+        res.status(500).json({ error: "Failed to award badges" });
     }
 });
 
