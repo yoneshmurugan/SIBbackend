@@ -63,7 +63,7 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
             ]),
             // M2M (Both members get points)
             OneToOneMeeting.aggregate([
-                { $match: { status: true, meeting_date: { $gte: startOfMonth, $lt: endOfMonth } } },
+                { $match: { meeting_date: { $gte: startOfMonth, $lt: endOfMonth } } },
                 { $project: { members: ["$member1_id", "$member2_id"] } },
                 { $unwind: "$members" },
                 { $match: { members: { $in: userIds } } },
@@ -71,12 +71,12 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
             ]),
             // Referrals (Given by referrer)
             Referral.aggregate([
-                { $match: { referrer_id: { $in: userIds }, status: true, created_at: { $gte: startOfMonth, $lt: endOfMonth } } },
+                { $match: { referrer_id: { $in: userIds }, created_at: { $gte: startOfMonth, $lt: endOfMonth } } },
                 { $group: { _id: "$referrer_id", count: { $sum: 1 } } }
             ]),
             // TYFTB
             TYFTB.aggregate([
-                { $match: { payer_id: { $in: userIds }, status: true, created_at: { $gte: startOfMonth, $lt: endOfMonth } } },
+                { $match: { payer_id: { $in: userIds }, created_at: { $gte: startOfMonth, $lt: endOfMonth } } },
                 { $group: { _id: "$payer_id", count: { $sum: 1 } } }
             ]),
             // Total meetings for attendance logic (for current month)
