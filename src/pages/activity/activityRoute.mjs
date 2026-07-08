@@ -532,7 +532,7 @@ router.get('/getactivityofusers', async (req, res) => {
                         referralReceivedFilter.createdAt = dateFilterCreatedAt;
                         tyftbGivenFilter.createdAt = dateFilterCreatedAt;
                         tyftbReceivedFilter.createdAt = dateFilterCreatedAt;
-                        m2mFilter.createdAt = dateFilterCreatedAt;
+                        m2mFilter.meeting_date = dateFilterCreatedAt;
                         visitorFilter.createdAt = dateFilterCreatedAt;
                     }
 
