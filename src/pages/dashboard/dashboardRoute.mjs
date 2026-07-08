@@ -458,7 +458,7 @@ router.get('/getactivityupcoming/:timeline', async (req, res) => {
 		const tyftbReceivedFilter = { receiver_id: req.userid, status: false, ...rangeFilter };
 		const m2mFilter = {
 			$or: [{ member1_id: req.userid }, { member2_id: req.userid }], status: false,
-			...rangeFilter
+			...(startDate && endDate ? { meeting_date: { $gte: startDate, $lte: endDate } } : {})
 		};
 		const visitorsFilter = { inviting_member_id: req.userid, status: false, ...rangeFilter };
 
