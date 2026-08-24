@@ -437,4 +437,44 @@ AdminRouter.put('/blockuser', async (req, res) => {
     }
 });
 
+
+AdminRouter.put('/change-username', async (req, res) => {
+  try {
+    const { user_id, new_username } = req.body;
+    
+    if (!user_id || !new_username) {
+      return res.status(400).json({ error: "user_id and new_username are required" });
+    }
+
+    if (new_username.length > 50) {
+      return res.status(400).json({ error: "Username must be 50 characters or less" });
+    }
+
+    // Check if new_username is already taken by another user (case-insensitive)
+    const existingUser = await User.findOne({ 
+      username: { $regex: new RegExp('^' + new_username + ', 'i') } 
+    });
+
+    if (existingUser && existingUser._id.toString() !== user_id) {
+      return res.status(409).json({ error: "Username is already taken by another member" });
+    }
+
+    // Update the user
+    const updatedUser = await User.findByIdAndUpdate(
+      user_id,
+      { username: new_username },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.status(200).json({ message: "Username successfully updated", user: updatedUser });
+  } catch (error) {
+    console.error("Error changing username:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default AdminRouter;
