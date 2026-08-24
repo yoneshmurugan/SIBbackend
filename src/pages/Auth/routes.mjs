@@ -99,7 +99,7 @@ router.post("/sessionLogin", loginValidator, handleValidation, async (req, res) 
   const idToken = req.body.idToken?.toString();
   const user_id = req.body.user_id?.toString();
   const admins = process.env.ADMIN_UIDS ? process.env.ADMIN_UIDS.split(",") : [];
-  const expiresIn = parseInt(process.env.SESSION_EXPIRY) || 60 * 60 * 24 * 5 * 1000;
+  const expiresIn = 432000000; // Hardcoded to exactly 5 days
   let isadmin = false ;
   if (!idToken) {
     return res.status(400).json({ error: "Missing ID token" });
@@ -166,7 +166,7 @@ router.post("/resetPassword", resetPasswordValidator, handleValidation, async (r
 });
 
 router.post("/refreshSession", authenticateUser, async (req, res) => {
-  const expiresIn = parseInt(process.env.SESSION_EXPIRY);
+  const expiresIn = 432000000; // Hardcoded to exactly 5 days
   
   // --- THE FIX: Look for the token in the cookie OR the custom header ---
   const currentToken = req.cookies.session || req.headers['x-session-token'];
