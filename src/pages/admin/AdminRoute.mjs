@@ -452,7 +452,7 @@ AdminRouter.put('/change-username', async (req, res) => {
 
     // Check if new_username is already taken by another user (case-insensitive)
     const existingUser = await User.findOne({ 
-      username: { $regex: new RegExp('^' + new_username + ', 'i') } 
+      username: { $regex: new RegExp('^' + new_username + '$', 'i') } 
     });
 
     if (existingUser && existingUser._id.toString() !== user_id) {
