@@ -154,6 +154,67 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
     }
 });
 
+router.get("/past-leaders", authenticateCookie, async (req, res) => {
+    try {
+        const chapterId = req.chapter._id;
+        
+        // Find all badges for this chapter that are 'month_winner' or 'runner_up'
+        const badges = await EarnedBadge.find({ 
+            chapter_id: chapterId,
+            badge_type: { $in: ['month_winner', 'runner_up'] }
+        })
+        .populate('user_id', 'username')
+        .sort({ year: -1, month: -1, badge_type: 1 }); // m comes before r, so month_winner comes first
+
+        // Get user profiles for avatars
+        const userIds = badges.map(b => b.user_id?._id).filter(id => id);
+        const profiles = await MemberProfile.find({ user_id: { $in: userIds } }, 'user_id profile_image_url company_name');
+        
+        const profileMap = {};
+        profiles.forEach(p => {
+            profileMap[p.user_id.toString()] = {
+                avatar: p.profile_image_url,
+                company_name: p.company_name
+            };
+        });
+
+        // Group by year and month
+        const grouped = [];
+        
+        badges.forEach(b => {
+            if (!b.user_id) return; // Skip if user deleted
+            
+            let yearGroup = grouped.find(g => g.year === b.year);
+            if (!yearGroup) {
+                yearGroup = { year: b.year, months: [] };
+                grouped.push(yearGroup);
+            }
+            
+            let monthGroup = yearGroup.months.find(m => m.month === b.month);
+            if (!monthGroup) {
+                monthGroup = { month: b.month, winners: [] };
+                yearGroup.months.push(monthGroup);
+            }
+            
+            const pInfo = profileMap[b.user_id._id.toString()] || {};
+            
+            monthGroup.winners.push({
+                user_id: b.user_id._id,
+                name: b.user_id.username,
+                avatar: pInfo.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(b.user_id.username)}&background=random`,
+                company: pInfo.company_name || req.chapter?.chapter_name || "SIB Member",
+                badge_type: b.badge_type
+            });
+        });
+
+        res.status(200).json(grouped);
+
+    } catch (err) {
+        console.error("Past Leaders Error:", err);
+        res.status(500).json({ error: "Failed to fetch past leaders" });
+    }
+});
+
 router.get("/my-badges", authenticateCookie, async (req, res) => {
     try {
         const userId = req.user._id;
