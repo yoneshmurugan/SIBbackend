@@ -187,7 +187,8 @@ router.get('/getallprofiles', async (req, res) => {
         chapter: "$chapter_name",
         region: "$region_name",
         services: 1,
-        createdAt: 1
+        createdAt: 1,
+        membership_status: 1
       }
     });
 
