@@ -309,4 +309,40 @@ router.post("/remove-fcm-token", authenticateCookie, async (req, res) => {
   }
 });
 
+// Lookup email by identifier (email or phone)
+router.post("/lookup-email", async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    if (!identifier) {
+      return res.status(400).json({ error: "Identifier is required" });
+    }
+
+    // If it's already an email, just return it
+    if (identifier.includes("@")) {
+      return res.json({ email: identifier.trim() });
+    }
+
+    // Otherwise, assume it's a phone number. Clean it up (strip spaces, hyphens).
+    const cleanPhone = identifier.replace(/[\s-]/g, "");
+
+    // Find the user by phone number. 
+    // We try to match either exact phone, or if they forgot country code, ending with it
+    const user = await User.findOne({
+      $or: [
+        { phone_number: cleanPhone },
+        { phone_number: { $regex: new RegExp(cleanPhone + "$") } }
+      ]
+    });
+
+    if (!user || !user.email) {
+      return res.status(404).json({ error: "No account found with this phone number" });
+    }
+
+    return res.json({ email: user.email });
+  } catch (error) {
+    console.error("Error in lookup-email:", error);
+    return res.status(500).json({ error: "Internal server error during lookup" });
+  }
+});
+
 export default router;
