@@ -161,7 +161,7 @@ router.get("/past-leaders", authenticateCookie, async (req, res) => {
         // Find all badges for this chapter that are 'month_winner' or 'runner_up'
         const badges = await EarnedBadge.find({ 
             chapter_id: chapterId,
-            badge_type: { $in: ['month_winner', 'runner_up'] }
+            badge_type: { $in: ['month_winner', 'runner_up', 'highest_referral', 'highest_tyb', 'highest_m2m', 'full_attendance'] }
         })
         .populate('user_id', 'username')
         .sort({ year: -1, month: -1, badge_type: 1 }); // m comes before r, so month_winner comes first
