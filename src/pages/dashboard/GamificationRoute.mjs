@@ -24,11 +24,14 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
             membership_status: true 
         }).populate('user_id', 'username');
 
-        if (!memberships.length) {
+        // Filter out dangling memberships where the user was deleted
+        const validMemberships = memberships.filter(m => m.user_id && m.user_id._id);
+
+        if (!validMemberships.length) {
             return res.status(200).json([]);
         }
 
-        const userIds = memberships.map(m => m.user_id._id);
+        const userIds = validMemberships.map(m => m.user_id._id);
 
         // Fetch MemberProfiles for avatars and profile IDs
         const profiles = await MemberProfile.find({ user_id: { $in: userIds } }, '_id user_id profile_image_url company_name');
@@ -108,7 +111,7 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
         const tybMap = toMap(tyfcbs);
 
         // 3. Calculate points for each user
-        let leaderboard = memberships.map(m => {
+        let leaderboard = validMemberships.map(m => {
             const uIdStr = m.user_id._id.toString();
             const attCount = attMap[uIdStr] || 0;
             const m2mCount = m2mMap[uIdStr] || 0;
