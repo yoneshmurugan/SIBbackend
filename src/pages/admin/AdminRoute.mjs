@@ -402,4 +402,39 @@ AdminRouter.delete('/user', async (req, res) => {
     }
 });
 
+
+AdminRouter.put('/blockuser', async (req, res) => {
+    try {
+        const { userIds, block } = req.body;
+        if (!Array.isArray(userIds)) {
+            return res.status(400).json({ error: 'userIds must be an array' });
+        }
+
+        for (const id of userIds) {
+            const membership = await Membership.findById(id).populate('user_id');
+            if (membership && membership.user_id) {
+                const user = membership.user_id;
+                
+                membership.membership_status = !block;
+                await membership.save();
+
+                user.status = !block;
+                await user.save();
+
+                if (user.user_id) {
+                    try {
+                        await admin.auth().updateUser(user.user_id, { disabled: block });
+                    } catch (firebaseErr) {
+                        console.error("Firebase update failed for", user.user_id, firebaseErr);
+                    }
+                }
+            }
+        }
+        res.status(200).json({ message: `Successfully ${block ? 'suspended' : 'reactivated'} users.` });
+    } catch (error) {
+        console.error("Error in /blockuser:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default AdminRouter;
