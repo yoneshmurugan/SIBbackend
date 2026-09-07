@@ -19,6 +19,7 @@ MemberRouter.get('/getprofiles', async (req, res) => {
                 }
             },
             { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+            { $match: { 'user.status': { $ne: false } } },
             {
                 $lookup: {
                     from: 'verticals',

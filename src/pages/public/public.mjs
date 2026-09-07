@@ -20,6 +20,7 @@ Public.get('/getallprofiles', async (req, res) => {
         }
       },
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $match: { 'user.status': { $ne: false } } },
       {
         $lookup: {
           from: 'chapters',
@@ -254,6 +255,7 @@ Public.get('/getprofilebyid/:id', async (req, res) => {
         }
       },
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $match: { 'user.status': { $ne: false } } },
       {
         $lookup: {
           from: 'verticals',
@@ -558,6 +560,7 @@ Public.get('/upcoming-celebrations', async (req, res) => {
         }
       },
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $match: { 'user.status': { $ne: false } } },
       {
         $lookup: {
           from: 'chapters',
