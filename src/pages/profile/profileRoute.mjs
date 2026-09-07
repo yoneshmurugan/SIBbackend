@@ -51,6 +51,7 @@ router.get('/getallprofiles', async (req, res) => {
         }
       },
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $match: { 'user.status': { $ne: false } } },
       {
         $lookup: {
           from: 'chapters',
@@ -203,6 +204,7 @@ router.get('/getallprofiles', async (req, res) => {
         }
       },
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $match: { 'user.status': { $ne: false } } },
       {
         $lookup: {
           from: 'verticals',
@@ -287,6 +289,7 @@ router.get('/getprofile', async (req, res) => {
         }
       },
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $match: { 'user.status': { $ne: false } } },
       {
         $lookup: {
           from: 'chapter_memberships',
@@ -380,6 +383,7 @@ router.get('/getprofilebyid/:id', async (req, res) => {
         }
       },
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $match: { 'user.status': { $ne: false } } },
 
       {
         $lookup: {

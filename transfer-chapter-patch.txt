@@ -1,0 +1,37 @@
+
+AdminRouter.put('/transfer-chapter', async (req, res) => {
+  try {
+    const { userId, targetChapterId } = req.body;
+    if (!userId || !targetChapterId) {
+      return res.status(400).json({ error: 'userId and targetChapterId are required' });
+    }
+
+    const chapterExists = await Chapter.findById(targetChapterId);
+    if (!chapterExists) {
+      return res.status(404).json({ error: 'Target chapter not found' });
+    }
+
+    const membership = await Membership.findOne({ user_id: userId });
+    const profile = await MemberProfile.findOne({ user_id: userId });
+
+    if (!membership || !profile) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+
+    if (membership.chapter_id.toString() === targetChapterId) {
+      return res.status(400).json({ error: 'Member is already in this chapter' });
+    }
+
+    membership.chapter_id = targetChapterId;
+    membership.role = 'Member';
+    await membership.save();
+
+    profile.chapter_id = targetChapterId;
+    await profile.save();
+
+    res.status(200).json({ message: 'Chapter successfully transferred' });
+  } catch (error) {
+    console.error("Error in /transfer-chapter:", error);
+    res.status(500).json({ error: error.message });
+  }
+});

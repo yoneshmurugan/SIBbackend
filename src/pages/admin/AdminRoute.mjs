@@ -2,7 +2,7 @@ import router from "./CoordinatorRoute.mjs";
 import RegionRouter from "./regions/regionRoute.mjs";
 import VerticalRouter from './verticals/verticalRoute.mjs'
 import express from 'express'
-import { Chapter, Membership, OneToOneMeeting, Referral, TYFTB, Vertical, Region, User } from "../../schemas.mjs";
+import { Chapter, Membership, OneToOneMeeting, Referral, TYFTB, Vertical, Region, User, MemberProfile } from "../../schemas.mjs";
 import admin from "../Auth/firebase.mjs";
 
 const AdminRouter = express.Router();
@@ -470,11 +470,88 @@ AdminRouter.put('/change-username', async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.status(200).json({ message: "Username successfully updated", user: updatedUser });
+    res.status(200).json({ message: "Username successfully updated", user: updatedUser, MemberProfile });
   } catch (error) {
     console.error("Error changing username:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
+
+AdminRouter.put('/transfer-chapter', async (req, res) => {
+  try {
+    const { userId, targetChapterId } = req.body;
+    if (!userId || !targetChapterId) {
+      return res.status(400).json({ error: 'userId and targetChapterId are required' });
+    }
+
+    const chapterExists = await Chapter.findById(targetChapterId);
+    if (!chapterExists) {
+      return res.status(404).json({ error: 'Target chapter not found' });
+    }
+
+    const membership = await Membership.findOne({ user_id: userId });
+    const profile = await MemberProfile.findOne({ user_id: userId });
+
+    if (!membership || !profile) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+
+    if (membership.chapter_id.toString() === targetChapterId) {
+      return res.status(400).json({ error: 'Member is already in this chapter' });
+    }
+
+    membership.chapter_id = targetChapterId;
+    membership.role = 'Member';
+    await membership.save();
+
+    profile.chapter_id = targetChapterId;
+    await profile.save();
+
+    res.status(200).json({ message: 'Chapter successfully transferred' });
+  } catch (error) {
+    console.error("Error in /transfer-chapter:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+AdminRouter.get('/members-search', async (req, res) => {
+  try {
+    const memberships = await Membership.aggregate([
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user_id',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'chapters',
+          localField: 'chapter_id',
+          foreignField: '_id',
+          as: 'chapter'
+        }
+      },
+      { $unwind: { path: '$chapter', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          user_id: 1,
+          username: '$user.username',
+          status: '$user.status',
+          chapter_id: 1,
+          chapter_name: '$chapter.chapter_name',
+          role: 1
+        }
+      }
+    ]);
+    res.status(200).json(memberships);
+  } catch (error) {
+    console.error("Error in /members-search:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 export default AdminRouter;

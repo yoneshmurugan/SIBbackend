@@ -1,0 +1,40 @@
+
+AdminRouter.get('/members-search', async (req, res) => {
+  try {
+    const memberships = await Membership.aggregate([
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user_id',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'chapters',
+          localField: 'chapter_id',
+          foreignField: '_id',
+          as: 'chapter'
+        }
+      },
+      { $unwind: { path: '$chapter', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          user_id: 1,
+          username: '$user.username',
+          status: '$user.status',
+          chapter_id: 1,
+          chapter_name: '$chapter.chapter_name',
+          role: 1
+        }
+      }
+    ]);
+    res.status(200).json(memberships);
+  } catch (error) {
+    console.error("Error in /members-search:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
