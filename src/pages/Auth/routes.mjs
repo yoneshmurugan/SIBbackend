@@ -72,6 +72,10 @@ router.post("/sessionLogin", loginValidator, handleValidation, async (req, res) 
       sameSite: "None",
     });
     // We keep the standard cookie for Web/Android, but also send it in the JSON for iOS!
+    
+    if (user_id) {
+      await User.findOneAndUpdate({ user_id: user_id }, { last_signed_in: new Date() });
+    }
     res.json({ message: "Session created", isadmin, sessionToken: sessionCookie });
   } catch (error) {
     console.error("Error creating session cookie:", error);

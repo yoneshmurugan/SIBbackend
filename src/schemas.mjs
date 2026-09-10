@@ -111,6 +111,9 @@ const userSchema = new mongoose.Schema({
     fcmTokens: {
         type: [String],
         default: []
+    },
+    last_signed_in: {
+        type: Date
     }
 },
     {

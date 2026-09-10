@@ -142,7 +142,7 @@ router.get('/getallmemberships', async (req, res) => {
           updatedAt: 1,
           display_name: '$profile.display_name',
           company_phone: '$profile.company_phone',
-          user: { _id: 1, username: 1, name: 1, email: 1, phone_number: 1 },
+          user: { _id: 1, username: 1, name: 1, email: 1, phone_number: 1, last_signed_in: 1 },
           chapter: { _id: 1, chapter_name: 1, chapter_code: 1 }
         }
       }
