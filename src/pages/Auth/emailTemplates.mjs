@@ -140,3 +140,59 @@ export const getPasswordResetTemplate = (resetLink) => `
 </body>
 </html>
 `;
+
+export const getAnnouncementTemplate = (header, content) => {
+    // Convert plain text line breaks into HTML breaks, and wrap in paragraphs if needed, 
+    // but a simple replace is often safest for emojis and arbitrary whitespace formatting.
+    const htmlContent = content.replace(/\n/g, '<br/>');
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>\${header}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #111827;">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #f3f4f6; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color: #ffffff; padding: 32px 40px; border-bottom: 1px solid #f3f4f6; text-align: center;">
+                            <img src="https://www.senguntharinbusiness.in/assets/logo.webp" alt="SIB Logo" style="height: 60px; width: auto; max-width: 100%; display: block; margin: 0 auto;">
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <h1 style="margin: 0 0 24px; font-size: 20px; font-weight: 700; color: #111827; text-align: left; border-bottom: 2px solid #059669; padding-bottom: 12px;">\${header}</h1>
+                            
+                            <div style="font-size: 16px; line-height: 1.8; color: #374151; text-align: left; white-space: pre-wrap;">
+                                \${htmlContent}
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 24px 40px; border-top: 1px solid #f3f4f6; text-align: center;">
+                            <p style="margin: 0 0 8px; font-size: 14px; color: #6b7280;">
+                                Need help? Contact us at <a href="mailto:sibconnect2025@gmail.com" style="color: #059669; text-decoration: none;">sibconnect2025@gmail.com</a>
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                                &copy; \${new Date().getFullYear()} Sengundhar in Business. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+`;
+};

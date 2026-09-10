@@ -5,6 +5,7 @@ import { createNotificationValidation, getNotificationsValidation, createbulkNot
 import { handleValidationErrors, mapNamesToIds } from "../../middlewares.mjs";
 import { sendPushNotification } from "../../utils/fcmHelper.mjs";
 import transporter from '../Auth/transporter.mjs';
+import { getAnnouncementTemplate } from '../Auth/emailTemplates.mjs';
 
 const router = express.Router();
 
@@ -209,7 +210,7 @@ router.post(
                         from: process.env.GMAIL,
                         bcc: emails,
                         subject: header,
-                        text: content
+                        html: getAnnouncementTemplate(header, content)
                     };
                     transporter.sendMail(mailOptions).catch(err => console.error("Email send error:", err));
                 }
@@ -326,7 +327,7 @@ router.post(
                         from: process.env.GMAIL,
                         bcc: emails,
                         subject: header,
-                        text: content
+                        html: getAnnouncementTemplate(header, content)
                     };
                     transporter.sendMail(mailOptions).catch(err => console.error("Email send error:", err));
                 }
