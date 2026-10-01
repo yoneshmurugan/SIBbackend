@@ -31,7 +31,7 @@ router.post(
         gallery = await Gallery.findOne({ title: `${galname} M2M gallery` }).select('_id').lean();
       }
 
-      if (req.body.image_url && gallery) {
+      if (req.body.image_url && gallery && !req.body.image_url.includes('wikimedia')) {
         try {
           const fullGallery = await Gallery.findById(gallery._id);
           if (fullGallery) {
