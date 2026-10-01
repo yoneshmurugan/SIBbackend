@@ -31,14 +31,19 @@ router.post(
         gallery = await Gallery.findOne({ title: `${galname} M2M gallery` }).select('_id').lean();
       }
 
-      if (req.body.image_url) {
-        fetch(`https://api.senguntharinbusiness.in/gallery/add-photos/${gallery._id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ photos: [req.body.image_url] })
-        }).catch(err => {
-          console.error('Failed to add photo to gallery:', err.message);
-        });
+      if (req.body.image_url && gallery) {
+        try {
+          const fullGallery = await Gallery.findById(gallery._id);
+          if (fullGallery) {
+            if (!fullGallery.coverImg) {
+              fullGallery.coverImg = req.body.image_url;
+            }
+            fullGallery.photos.push(req.body.image_url);
+            await fullGallery.save();
+          }
+        } catch (err) {
+          console.error('Failed to add photo to gallery directly:', err.message);
+        }
       }
 
       const meeting = new OneToOneMeeting(req.body);

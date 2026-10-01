@@ -21,18 +21,19 @@ router.post('/createchapter', createChapterValidation, handleValidationErrors,
       const chapter = new Chapter(req.body);
       const saved = await chapter.save();
 
-      const galleryPayload = {
-        title: `${saved.chapter_name} M2M gallery`,
+      const galname = saved.chapter_name
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase())
+        .join('');
+
+      const newGallery = new Gallery({
+        title: `${galname} M2M gallery`,
         date: saved.founded_date || new Date(),
         coverImg: "",
         photos: []
-      };
+      });
 
-      fetch('https://api.senguntharinbusiness.in/gallery/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(galleryPayload)
-      }).catch(err => {
+      await newGallery.save().catch(err => {
         console.error('Failed to create gallery:', err.message);
       });
 
