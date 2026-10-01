@@ -5,12 +5,7 @@ const router = express.Router();
 router.get('/all', async (req, res) => {
     try {
         const galleries = await Gallery.find();
-        const formattedGalleries = galleries.map(g => {
-            const doc = g.toObject();
-            doc.photos = doc.photos.map(url => ({ src: url }));
-            return doc;
-        });
-        res.json(formattedGalleries);
+        res.json(galleries);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
