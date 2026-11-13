@@ -11,12 +11,20 @@ import {
     EarnedBadge
 } from "../../schemas.mjs";
 import { authenticateCookie } from "../../middlewares.mjs";
+import { 
+    manuallyTriggerBadgeAwards, 
+    ensureAllPastMonthlyBadgesAwarded, 
+    calculateAndAwardMonthlyBadges 
+} from "../../utils/cronJobs.mjs";
 
 const router = express.Router();
 
 router.get("/leaderboard", authenticateCookie, async (req, res) => {
     try {
         const chapterId = req.chapter._id;
+
+        // Auto-heal: ensure past months are awarded so badges display on leaderboard
+        ensureAllPastMonthlyBadgesAwarded().catch(err => console.error("Auto-heal badges error:", err));
 
         // 1. Get all active members in the chapter
         const memberships = await Membership.find({ 
@@ -158,6 +166,9 @@ router.get("/past-leaders", authenticateCookie, async (req, res) => {
     try {
         const chapterId = req.chapter._id;
         
+        // Auto-heal: ensure all past completed months have been evaluated and awarded
+        await ensureAllPastMonthlyBadgesAwarded();
+
         // Find all badges for this chapter that are 'month_winner' or 'runner_up'
         const badges = await EarnedBadge.find({ 
             chapter_id: chapterId,
@@ -237,15 +248,22 @@ router.get("/user-badges/:id", authenticateCookie, async (req, res) => {
     }
 });
 
-import { manuallyTriggerBadgeAwards } from "../../utils/cronJobs.mjs";
-
 router.get("/test-award-badges", async (req, res) => {
     try {
-        await manuallyTriggerBadgeAwards();
-        res.status(200).json({ message: "Badges awarded successfully!" });
+        const { year, month } = req.query;
+        let result;
+        if (year && month) {
+            result = await calculateAndAwardMonthlyBadges(Number(year), Number(month), false);
+        } else {
+            result = await ensureAllPastMonthlyBadgesAwarded();
+        }
+        res.status(200).json({ 
+            message: "Badges awarded successfully!", 
+            awardedMonths: result 
+        });
     } catch (err) {
         console.error("Test Award Badges Error:", err);
-        res.status(500).json({ error: "Failed to award badges" });
+        res.status(500).json({ error: "Failed to award badges", details: err.message });
     }
 });
 

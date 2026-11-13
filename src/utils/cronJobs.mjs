@@ -1,23 +1,33 @@
+import cron from 'node-cron';
 import { 
     MemberProfile, User, Chapter, Membership, Attendance, 
     OneToOneMeeting, Referral, TYFTB, Meeting, EarnedBadge 
 } from '../schemas.mjs';
 import { sendPushNotification } from './fcmHelper.mjs';
 
-const calculateAndAwardMonthlyBadges = async () => {
+export const calculateAndAwardMonthlyBadges = async (targetYearParam, targetMonthParam, sendNotifications = true) => {
     try {
-        console.log("Running monthly badge award job...");
-        
-        // Target the previous month
-        const now = new Date();
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); // 1st of current month (00:00:00)
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1); // 1st of previous month
-        
-        const targetMonth = startOfMonth.getMonth() + 1;
-        const targetYear = startOfMonth.getFullYear();
+        let startOfMonth, endOfMonth, targetMonth, targetYear;
+
+        if (targetYearParam && targetMonthParam) {
+            targetYear = Number(targetYearParam);
+            targetMonth = Number(targetMonthParam); // 1-12
+            startOfMonth = new Date(targetYear, targetMonth - 1, 1, 0, 0, 0, 0);
+            endOfMonth = new Date(targetYear, targetMonth, 1, 0, 0, 0, 0);
+        } else {
+            // Target the previous month by default
+            const now = new Date();
+            endOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0); // 1st of current month (00:00:00)
+            startOfMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0); // 1st of previous month
+            
+            targetMonth = startOfMonth.getMonth() + 1;
+            targetYear = startOfMonth.getFullYear();
+        }
         
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         const monthName = monthNames[targetMonth - 1];
+
+        console.log(`Running monthly badge award job for ${monthName} ${targetYear}...`);
 
         const chapters = await Chapter.find({ chapter_status: true });
         
@@ -152,10 +162,12 @@ const calculateAndAwardMonthlyBadges = async () => {
                 }
             }
 
-            // Send Push Notifications in parallel
-            await Promise.all(notificationsToSend.map(n => 
-                sendPushNotification([n.userId], n.title, n.body, { action: "OPEN_PROFILE_BADGES" })
-            ));
+            // Send Push Notifications in parallel (only if sendNotifications is true)
+            if (sendNotifications && notificationsToSend.length > 0) {
+                await Promise.all(notificationsToSend.map(n => 
+                    sendPushNotification([n.userId], n.title, n.body, { action: "OPEN_PROFILE_BADGES" })
+                ));
+            }
         }
 
         console.log(`Monthly badge calculation for ${monthName} ${targetYear} completed.`);
@@ -164,8 +176,62 @@ const calculateAndAwardMonthlyBadges = async () => {
     }
 };
 
-export const manuallyTriggerBadgeAwards = async () => {
-    return await calculateAndAwardMonthlyBadges();
+let isAwardingInProgress = false;
+
+export const ensureAllPastMonthlyBadgesAwarded = async () => {
+    if (isAwardingInProgress) {
+        console.log("Badge award calculation already in progress, skipping duplicate call.");
+        return [];
+    }
+    isAwardingInProgress = true;
+    try {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1; // 1-12
+
+        // Start checking from July 2026 (when gamification launched)
+        let checkYear = 2026;
+        let checkMonth = 7;
+        const awardedMonths = [];
+
+        while (
+            checkYear < currentYear || 
+            (checkYear === currentYear && checkMonth < currentMonth)
+        ) {
+            // Check if any badges exist for this month and year
+            const exists = await EarnedBadge.exists({ year: checkYear, month: checkMonth });
+            if (!exists) {
+                const isImmediatePrevious = (
+                    (checkYear === currentYear && checkMonth === currentMonth - 1) ||
+                    (checkYear === currentYear - 1 && currentMonth === 1 && checkMonth === 12)
+                );
+
+                console.log(`[Gamification Backfill] Awarding badges for missing month: ${checkMonth}/${checkYear}...`);
+                await calculateAndAwardMonthlyBadges(checkYear, checkMonth, isImmediatePrevious);
+                awardedMonths.push(`${checkMonth}/${checkYear}`);
+            }
+
+            checkMonth++;
+            if (checkMonth > 12) {
+                checkMonth = 1;
+                checkYear++;
+            }
+        }
+
+        return awardedMonths;
+    } catch (err) {
+        console.error("Error in ensureAllPastMonthlyBadgesAwarded:", err);
+        return [];
+    } finally {
+        isAwardingInProgress = false;
+    }
+};
+
+export const manuallyTriggerBadgeAwards = async (year, month) => {
+    if (year && month) {
+        return await calculateAndAwardMonthlyBadges(Number(year), Number(month), false);
+    }
+    return await ensureAllPastMonthlyBadgesAwarded();
 };
 
 const startCronJobs = () => {
@@ -279,7 +345,7 @@ const startCronJobs = () => {
 
     // Run at 00:01 AM on the 1st of every month
     cron.schedule('1 0 1 * *', async () => {
-        await calculateAndAwardMonthlyBadges();
+        await ensureAllPastMonthlyBadgesAwarded();
     }, {
         scheduled: true,
         timezone: "Asia/Kolkata"

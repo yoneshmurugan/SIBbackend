@@ -20,6 +20,7 @@
   "scripts": {
     "start": "node ./src/app.mjs",
     "dev": "nodemon ./src/app.mjs",
+    "backfill-badges": "node ./src/scripts/backfill_badges.mjs",
     "test": "echo \"No tests\" && exit 0"
   },
   "devDependencies": {
