@@ -80,7 +80,7 @@ export const updateProfileValidator = [
 export const resetPasswordValidator = [
     body("email")
         .isEmail().withMessage("Must be a valid email")
-        .normalizeEmail(),
+        .trim().toLowerCase(),
 ];
 
 export const deleteAccountValidator = [
@@ -91,7 +91,7 @@ export const deleteAccountValidator = [
 export const updatePasswordValidator = [
     body("email")
         .isEmail().withMessage("A valid email is required")
-        .normalizeEmail(),
+        .trim().toLowerCase(),
     body("oldPassword")
         .isLength({ min: 8 }).withMessage("Old password must be at least 8 characters"),
     body("newPassword")

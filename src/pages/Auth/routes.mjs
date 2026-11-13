@@ -105,8 +105,19 @@ router.put("/updateProfile", authenticateUser, updateProfileValidator, handleVal
 router.post("/resetPassword", resetPasswordValidator, handleValidation, async (req, res) => {
   const { email } = req.body;
   try {
+    const cleanEmail = email.trim();
+    const escapedEmail = cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const [userPart, domainPart] = cleanEmail.split('@');
+    const noDotsEmail = domainPart?.toLowerCase() === 'gmail.com' 
+      ? `${userPart.replace(/\./g, '')}@${domainPart}` 
+      : cleanEmail;
+
     const user = await User.findOne({
-      email: { $regex: new RegExp(`^${email.trim()}$`, "i") }
+      $or: [
+        { email: cleanEmail },
+        { email: { $regex: new RegExp(`^${escapedEmail}$`, "i") } },
+        { email: { $regex: new RegExp(`^${noDotsEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") } }
+      ]
     });
     if (!user || !user.email) {
       return res.status(404).json({ error: `No registered account found for "${email}". Please verify your email address or contact your chapter coordinator.` });
@@ -115,7 +126,7 @@ router.post("/resetPassword", resetPasswordValidator, handleValidation, async (r
     const link = await admin.auth().generatePasswordResetLink(user.email);
     await transporter.sendMail({
       from: '"SIB - Sengundhar in Business" <kairospredict@gmail.com>',
-      to: email,
+      to: user.email,
       subject: "Password Reset Request",
       html: getPasswordResetTemplate(link)
     });
@@ -283,8 +294,19 @@ router.post("/lookup-email", async (req, res) => {
 
     // If it's an email, verify it exists in MongoDB
     if (identifier.includes("@")) {
+      const cleanEmail = identifier.trim();
+      const escapedEmail = cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const [userPart, domainPart] = cleanEmail.split('@');
+      const noDotsEmail = domainPart?.toLowerCase() === 'gmail.com' 
+        ? `${userPart.replace(/\./g, '')}@${domainPart}` 
+        : cleanEmail;
+
       const user = await User.findOne({
-        email: { $regex: new RegExp(`^${identifier.trim()}$`, "i") }
+        $or: [
+          { email: cleanEmail },
+          { email: { $regex: new RegExp(`^${escapedEmail}$`, "i") } },
+          { email: { $regex: new RegExp(`^${noDotsEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") } }
+        ]
       });
       if (!user || !user.email) {
         return res.status(404).json({ error: `No registered account found for "${identifier.trim()}". Please verify your email or contact chapter coordinator.` });
