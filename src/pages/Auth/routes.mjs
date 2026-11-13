@@ -105,7 +105,14 @@ router.put("/updateProfile", authenticateUser, updateProfileValidator, handleVal
 router.post("/resetPassword", resetPasswordValidator, handleValidation, async (req, res) => {
   const { email } = req.body;
   try {
-    const link = await admin.auth().generatePasswordResetLink(email);
+    const user = await User.findOne({
+      email: { $regex: new RegExp(`^${email.trim()}$`, "i") }
+    });
+    if (!user || !user.email) {
+      return res.status(404).json({ error: `No registered account found for "${email}". Please verify your email address or contact your chapter coordinator.` });
+    }
+
+    const link = await admin.auth().generatePasswordResetLink(user.email);
     await transporter.sendMail({
       from: '"SIB - Sengundhar in Business" <kairospredict@gmail.com>',
       to: email,
@@ -274,9 +281,15 @@ router.post("/lookup-email", async (req, res) => {
       return res.status(400).json({ error: "Identifier is required" });
     }
 
-    // If it's already an email, just return it
+    // If it's an email, verify it exists in MongoDB
     if (identifier.includes("@")) {
-      return res.json({ email: identifier.trim() });
+      const user = await User.findOne({
+        email: { $regex: new RegExp(`^${identifier.trim()}$`, "i") }
+      });
+      if (!user || !user.email) {
+        return res.status(404).json({ error: `No registered account found for "${identifier.trim()}". Please verify your email or contact chapter coordinator.` });
+      }
+      return res.json({ email: user.email });
     }
 
     // Otherwise, assume it's a phone number. Clean it up (strip spaces, hyphens).
@@ -292,7 +305,7 @@ router.post("/lookup-email", async (req, res) => {
     });
 
     if (!user || !user.email) {
-      return res.status(404).json({ error: "No account found with this phone number" });
+      return res.status(404).json({ error: `No registered account found with phone number "${identifier.trim()}".` });
     }
 
     return res.json({ email: user.email });
