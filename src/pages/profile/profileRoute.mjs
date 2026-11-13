@@ -336,7 +336,14 @@ router.get('/getprofile', async (req, res) => {
           updatedAt: 1,
           user: { _id: 1, name: 1, email: 1, username: 1 },
           verticals: { vertical_name: 1 },
-          membership: { idno: 1 }
+          membership: { 
+            idno: 1, 
+            role: 1, 
+            join_date: 1, 
+            renewal_date: 1, 
+            membership_status: 1 
+          },
+          emergency_blood_donor: 1
         }
       }
     ]);
@@ -350,6 +357,7 @@ router.get('/getprofile', async (req, res) => {
     }
 
     doc.chaptername = chapter ? chapter.chapter_name : null;
+    doc.chapter_code = chapter ? chapter.chapter_code : null;
 
     res.status(200).json(doc);
   } catch (err) {
@@ -438,6 +446,7 @@ router.get('/getprofilebyid/:id', async (req, res) => {
     }
 
     doc.chaptername = chapter ? chapter.chapter_name : null;
+    doc.chapter_code = chapter ? chapter.chapter_code : null;
 
     res.status(200).json(doc);
   } catch (err) {

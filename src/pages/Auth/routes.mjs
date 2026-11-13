@@ -181,7 +181,10 @@ router.get("/getuser", authenticateCookie, async (req, res) => {
     if (!userId) {
       return res.status(400).json({ error: "Missing user id." });
     }
-    const userObj = await User.findOne({ user_id: userId });
+    const userObj = await User.findOne({ user_id: userId }).lean();
+    if (userObj) {
+      userObj.current_ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || req.ip;
+    }
     res.json(userObj);
   } catch (error) {
     res.status(400).json({ error: error.message });

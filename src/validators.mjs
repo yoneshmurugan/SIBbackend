@@ -570,6 +570,7 @@ export const updateProfileValidation = [
         .withMessage('wedding_date cannot be in the future'),
 
     body('blood_group').optional({ checkFalsy: true }).isIn(validBloodGroups),
+    body('emergency_blood_donor').optional().isBoolean(),
 
     body('vagai_category').optional({ checkFalsy: true }).isString().isLength({ max: 100 }),
     body('kulam_category').optional({ checkFalsy: true }).isString().isLength({ max: 100 }),
