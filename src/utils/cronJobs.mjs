@@ -5,7 +5,7 @@ import {
 } from '../schemas.mjs';
 import { sendPushNotification } from './fcmHelper.mjs';
 
-export const calculateAndAwardMonthlyBadges = async (targetYearParam, targetMonthParam, sendNotifications = true) => {
+export const calculateAndAwardMonthlyBadges = async (targetYearParam, targetMonthParam, sendNotifications = true, force = false) => {
     try {
         let startOfMonth, endOfMonth, targetMonth, targetYear;
 
@@ -27,9 +27,15 @@ export const calculateAndAwardMonthlyBadges = async (targetYearParam, targetMont
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         const monthName = monthNames[targetMonth - 1];
 
-        console.log(`Running monthly badge award job for ${monthName} ${targetYear}...`);
+        console.log(`Running monthly badge award job for ${monthName} ${targetYear} (force: ${force})...`);
+
+        if (force) {
+            const delRes = await EarnedBadge.deleteMany({ year: targetYear, month: targetMonth });
+            console.log(`[Gamification] Force recalculation: deleted ${delRes.deletedCount} existing badges for ${monthName} ${targetYear}.`);
+        }
 
         const chapters = await Chapter.find({ chapter_status: true });
+        const summaryResults = [];
         
         for (const chapter of chapters) {
             const memberships = await Membership.find({ 
@@ -49,25 +55,63 @@ export const calculateAndAwardMonthlyBadges = async (targetYearParam, targetMont
                 totalMeetings
             ] = await Promise.all([
                 Attendance.aggregate([
-                    { $match: { user_id: { $in: userIds }, attendance_status: 'present', date: { $gte: startOfMonth, $lt: endOfMonth } } },
+                    { 
+                        $match: { 
+                            user_id: { $in: userIds }, 
+                            attendance_status: { $regex: /^present$/i }, 
+                            $or: [
+                                { date: { $gte: startOfMonth, $lt: endOfMonth } },
+                                { createdAt: { $gte: startOfMonth, $lt: endOfMonth } }
+                            ]
+                        } 
+                    },
                     { $group: { _id: "$user_id", count: { $sum: 1 } } }
                 ]),
                 OneToOneMeeting.aggregate([
-                    { $match: { meeting_date: { $gte: startOfMonth, $lt: endOfMonth } } },
+                    { 
+                        $match: { 
+                            $or: [
+                                { meeting_date: { $gte: startOfMonth, $lt: endOfMonth } },
+                                { createdAt: { $gte: startOfMonth, $lt: endOfMonth } }
+                            ]
+                        } 
+                    },
                     { $project: { members: ["$member1_id", "$member2_id"] } },
                     { $unwind: "$members" },
                     { $match: { members: { $in: userIds } } },
                     { $group: { _id: "$members", count: { $sum: 1 } } }
                 ]),
                 Referral.aggregate([
-                    { $match: { referrer_id: { $in: userIds }, created_at: { $gte: startOfMonth, $lt: endOfMonth } } },
+                    { 
+                        $match: { 
+                            referrer_id: { $in: userIds }, 
+                            $or: [
+                                { created_at: { $gte: startOfMonth, $lt: endOfMonth } },
+                                { createdAt: { $gte: startOfMonth, $lt: endOfMonth } }
+                            ]
+                        } 
+                    },
                     { $group: { _id: "$referrer_id", count: { $sum: 1 } } }
                 ]),
                 TYFTB.aggregate([
-                    { $match: { payer_id: { $in: userIds }, created_at: { $gte: startOfMonth, $lt: endOfMonth } } },
+                    { 
+                        $match: { 
+                            payer_id: { $in: userIds }, 
+                            $or: [
+                                { created_at: { $gte: startOfMonth, $lt: endOfMonth } },
+                                { createdAt: { $gte: startOfMonth, $lt: endOfMonth } }
+                            ]
+                        } 
+                    },
                     { $group: { _id: "$payer_id", count: { $sum: 1 } } }
                 ]),
-                Meeting.countDocuments({ chapter_id: chapter._id, meeting_date: { $gte: startOfMonth, $lt: endOfMonth } })
+                Meeting.countDocuments({ 
+                    chapter_id: chapter._id, 
+                    $or: [
+                        { meeting_date: { $gte: startOfMonth, $lt: endOfMonth } },
+                        { createdAt: { $gte: startOfMonth, $lt: endOfMonth } }
+                    ]
+                })
             ]);
 
             const toMap = (arr) => {
@@ -102,7 +146,15 @@ export const calculateAndAwardMonthlyBadges = async (targetYearParam, targetMont
             leaderboard = leaderboard.filter(u => u.points > 0);
             leaderboard.sort((a, b) => b.points - a.points);
             
-            if (leaderboard.length === 0) continue;
+            if (leaderboard.length === 0) {
+                summaryResults.push({
+                    chapter_id: chapter._id,
+                    chapter_name: chapter.chapter_name,
+                    activeParticipants: 0,
+                    badgesAwarded: []
+                });
+                continue;
+            }
 
             const maxRef = Math.max(...leaderboard.map(u => u.stats.referrals), 0);
             const maxM2M = Math.max(...leaderboard.map(u => u.stats.m2m), 0);
@@ -116,7 +168,7 @@ export const calculateAndAwardMonthlyBadges = async (targetYearParam, targetMont
                 if (user.stats.referrals === maxRef && maxRef > 0) user.earnedBadges.push('highest_referral');
                 if (user.stats.m2m === maxM2M && maxM2M > 0) user.earnedBadges.push('highest_m2m');
                 if (user.stats.tyfcb === maxTyb && maxTyb > 0) user.earnedBadges.push('highest_tyb');
-                if (user.stats.attendance > 0 && user.stats.attendance >= totalMeetings) user.earnedBadges.push('full_attendance');
+                if (totalMeetings > 0 && user.stats.attendance > 0 && user.stats.attendance >= totalMeetings) user.earnedBadges.push('full_attendance');
             });
 
             // Save to DB and prepare Push Notifications
@@ -162,6 +214,20 @@ export const calculateAndAwardMonthlyBadges = async (targetYearParam, targetMont
                 }
             }
 
+            summaryResults.push({
+                chapter_id: chapter._id,
+                chapter_name: chapter.chapter_name,
+                totalMeetings,
+                activeParticipants: leaderboard.length,
+                leaderboard: leaderboard.map(u => ({
+                    user_id: u.user_id,
+                    username: u.username,
+                    points: u.points,
+                    stats: u.stats,
+                    earnedBadges: u.earnedBadges
+                }))
+            });
+
             // Send Push Notifications in parallel (only if sendNotifications is true)
             if (sendNotifications && notificationsToSend.length > 0) {
                 await Promise.all(notificationsToSend.map(n => 
@@ -171,14 +237,21 @@ export const calculateAndAwardMonthlyBadges = async (targetYearParam, targetMont
         }
 
         console.log(`Monthly badge calculation for ${monthName} ${targetYear} completed.`);
+        return {
+            month: targetMonth,
+            monthName,
+            year: targetYear,
+            chapters: summaryResults
+        };
     } catch (error) {
         console.error("Error in calculateAndAwardMonthlyBadges:", error);
+        return { error: error.message };
     }
 };
 
 let isAwardingInProgress = false;
 
-export const ensureAllPastMonthlyBadgesAwarded = async () => {
+export const ensureAllPastMonthlyBadgesAwarded = async (force = false) => {
     if (isAwardingInProgress) {
         console.log("Badge award calculation already in progress, skipping duplicate call.");
         return [];
@@ -200,15 +273,15 @@ export const ensureAllPastMonthlyBadgesAwarded = async () => {
         ) {
             // Check if any badges exist for this month and year
             const exists = await EarnedBadge.exists({ year: checkYear, month: checkMonth });
-            if (!exists) {
+            if (!exists || force) {
                 const isImmediatePrevious = (
                     (checkYear === currentYear && checkMonth === currentMonth - 1) ||
                     (checkYear === currentYear - 1 && currentMonth === 1 && checkMonth === 12)
                 );
 
-                console.log(`[Gamification Backfill] Awarding badges for missing month: ${checkMonth}/${checkYear}...`);
-                await calculateAndAwardMonthlyBadges(checkYear, checkMonth, isImmediatePrevious);
-                awardedMonths.push(`${checkMonth}/${checkYear}`);
+                console.log(`[Gamification Backfill] Awarding badges for month: ${checkMonth}/${checkYear} (force: ${force})...`);
+                const res = await calculateAndAwardMonthlyBadges(checkYear, checkMonth, isImmediatePrevious, force);
+                awardedMonths.push({ month: `${checkMonth}/${checkYear}`, result: res });
             }
 
             checkMonth++;

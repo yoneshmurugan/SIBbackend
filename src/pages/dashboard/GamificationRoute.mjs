@@ -79,12 +79,28 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
         ] = await Promise.all([
             // Attendance
             Attendance.aggregate([
-                { $match: { user_id: { $in: userIds }, attendance_status: 'present', date: { $gte: startOfMonth, $lt: endOfMonth } } },
+                { 
+                    $match: { 
+                        user_id: { $in: userIds }, 
+                        attendance_status: { $regex: /^present$/i }, 
+                        $or: [
+                            { date: { $gte: startOfMonth, $lt: endOfMonth } },
+                            { createdAt: { $gte: startOfMonth, $lt: endOfMonth } }
+                        ]
+                    } 
+                },
                 { $group: { _id: "$user_id", count: { $sum: 1 } } }
             ]),
             // M2M (Both members get points)
             OneToOneMeeting.aggregate([
-                { $match: { meeting_date: { $gte: startOfMonth, $lt: endOfMonth } } },
+                { 
+                    $match: { 
+                        $or: [
+                            { meeting_date: { $gte: startOfMonth, $lt: endOfMonth } },
+                            { createdAt: { $gte: startOfMonth, $lt: endOfMonth } }
+                        ]
+                    } 
+                },
                 { $project: { members: ["$member1_id", "$member2_id"] } },
                 { $unwind: "$members" },
                 { $match: { members: { $in: userIds } } },
@@ -92,16 +108,38 @@ router.get("/leaderboard", authenticateCookie, async (req, res) => {
             ]),
             // Referrals (Given by referrer)
             Referral.aggregate([
-                { $match: { referrer_id: { $in: userIds }, created_at: { $gte: startOfMonth, $lt: endOfMonth } } },
+                { 
+                    $match: { 
+                        referrer_id: { $in: userIds }, 
+                        $or: [
+                            { created_at: { $gte: startOfMonth, $lt: endOfMonth } },
+                            { createdAt: { $gte: startOfMonth, $lt: endOfMonth } }
+                        ]
+                    } 
+                },
                 { $group: { _id: "$referrer_id", count: { $sum: 1 } } }
             ]),
             // TYFTB
             TYFTB.aggregate([
-                { $match: { payer_id: { $in: userIds }, created_at: { $gte: startOfMonth, $lt: endOfMonth } } },
+                { 
+                    $match: { 
+                        payer_id: { $in: userIds }, 
+                        $or: [
+                            { created_at: { $gte: startOfMonth, $lt: endOfMonth } },
+                            { createdAt: { $gte: startOfMonth, $lt: endOfMonth } }
+                        ]
+                    } 
+                },
                 { $group: { _id: "$payer_id", count: { $sum: 1 } } }
             ]),
             // Total meetings for attendance logic (for current month)
-            Meeting.countDocuments({ chapter_id: chapterId, meeting_date: { $gte: startOfMonth, $lt: endOfMonth } })
+            Meeting.countDocuments({ 
+                chapter_id: chapterId, 
+                $or: [
+                    { meeting_date: { $gte: startOfMonth, $lt: endOfMonth } },
+                    { createdAt: { $gte: startOfMonth, $lt: endOfMonth } }
+                ]
+            })
         ]);
 
         // Helper to convert aggregation array to map
@@ -250,16 +288,17 @@ router.get("/user-badges/:id", authenticateCookie, async (req, res) => {
 
 router.get("/test-award-badges", async (req, res) => {
     try {
-        const { year, month } = req.query;
+        const { year, month, force } = req.query;
         let result;
+        const isForce = force === 'true' || force === true;
         if (year && month) {
-            result = await calculateAndAwardMonthlyBadges(Number(year), Number(month), false);
+            result = await calculateAndAwardMonthlyBadges(Number(year), Number(month), false, isForce);
         } else {
-            result = await ensureAllPastMonthlyBadgesAwarded();
+            result = await ensureAllPastMonthlyBadgesAwarded(isForce);
         }
         res.status(200).json({ 
-            message: "Badges awarded successfully!", 
-            awardedMonths: result 
+            message: "Badges calculation completed successfully!", 
+            data: result 
         });
     } catch (err) {
         console.error("Test Award Badges Error:", err);
