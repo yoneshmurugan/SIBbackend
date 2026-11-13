@@ -653,10 +653,7 @@ const profileSchema = new Schema(
             },
             default: "A+",
         },
-        emergency_blood_donor: {
-            type: Boolean,
-            default: false,
-        },
+
         vagai_category: {
             type: String,
             trim: true,

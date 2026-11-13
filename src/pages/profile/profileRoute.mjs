@@ -343,7 +343,7 @@ router.get('/getprofile', async (req, res) => {
             renewal_date: 1, 
             membership_status: 1 
           },
-          emergency_blood_donor: 1
+
         }
       }
     ]);
