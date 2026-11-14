@@ -177,7 +177,7 @@ router.get('/getallattendances', async (req, res) => {
           attendance_status: 1,
           date: 1,
           user: { _id: 1, username: 1, email: 1, phone_number: 1 },
-          meeting: { _id: 1, meeting_date: 1, title: 1, location: 1 }
+          meeting: { _id: 1, meeting_date: 1, title: 1, location: 1, meeting_time: 1, meeting_type: 1 }
         }
       }
     ]);
@@ -232,7 +232,7 @@ router.get('/getattendancebyid/:id',
             attendance_status: 1,
             date: 1,
             user: { _id: 1, username: 1, email: 1, phone_number: 1 },
-            meeting: { _id: 1, meeting_date: 1, title: 1, location: 1 }
+            meeting: { _id: 1, meeting_date: 1, title: 1, location: 1, meeting_time: 1, meeting_type: 1 }
           }
         }
       ]);
@@ -297,7 +297,7 @@ router.get('/getattendanceofuser/:userid', async (req, res) => {
           attendance_status: 1,
           date: 1,
           user: { _id: 1, username: 1, email: 1, phone_number: 1 },
-          meeting: { _id: 1, meeting_date: 1, title: 1, location: 1 }
+          meeting: { _id: 1, meeting_date: 1, title: 1, location: 1, meeting_time: 1, meeting_type: 1 }
         }
       }
     ]);
