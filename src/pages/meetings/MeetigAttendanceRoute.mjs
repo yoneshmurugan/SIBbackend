@@ -46,48 +46,91 @@ router.post(
       const { usersdata, meeting_id, date } = req.body;
 
       if (!usersdata || !Array.isArray(usersdata) || usersdata.length === 0) {
-        console.log("user data error")
         return res.status(400).json({ error: 'Valid usersdata array is required.' });
       }
-      if (!meeting_id) {
-        console.log("meeting id error")
+      if (!meeting_id || !mongoose.Types.ObjectId.isValid(meeting_id)) {
         return res.status(400).json({ error: 'Valid meeting_id is required.' });
       }
       if (!date) {
-        console.log("date error")
         return res.status(400).json({ error: 'Valid date is required.' });
       }
 
       const objectMeetingId = new mongoose.Types.ObjectId(meeting_id);
-      const usernames = usersdata.map(data => data.name);
+      const meetingDate = new Date(date);
 
-      const users = await User.find({ username: { $in: usernames } }).select('_id username');
+      // 1. Separate items with explicit IDs vs names
+      const explicitIds = [];
+      const fallbackNames = [];
 
-      if (users.length !== usernames.length) {
-        const foundUsernames = new Set(users.map(u => u.username));
-        const missingUsernames = usernames.filter(name => !foundUsernames.has(name));
-        console.log(missingUsernames)
+      for (const data of usersdata) {
+        const rawId = data.id || data.user_id || data._id;
+        if (rawId && mongoose.Types.ObjectId.isValid(rawId)) {
+          explicitIds.push(new mongoose.Types.ObjectId(rawId));
+        } else if (data.name) {
+          fallbackNames.push(data.name.trim());
+        }
+      }
+
+      // 2. Fetch users by ID and fallback username in parallel
+      const [usersById, usersByName] = await Promise.all([
+        explicitIds.length > 0 ? User.find({ _id: { $in: explicitIds } }).select('_id username') : [],
+        fallbackNames.length > 0 ? User.find({ username: { $in: fallbackNames } }).select('_id username') : []
+      ]);
+
+      const foundIdSet = new Set(usersById.map(u => u._id.toString()));
+      const usernameToIdMap = new Map(usersByName.map(u => [u.username, u._id]));
+
+      const missingUsernames = [];
+      const attendanceDocuments = [];
+
+      // 3. Resolve each user cleanly
+      for (const data of usersdata) {
+        const rawId = data.id || data.user_id || data._id;
+        let resolvedUserId = null;
+
+        if (rawId && foundIdSet.has(rawId.toString())) {
+          resolvedUserId = new mongoose.Types.ObjectId(rawId);
+        } else if (data.name && usernameToIdMap.has(data.name.trim())) {
+          resolvedUserId = usernameToIdMap.get(data.name.trim());
+        }
+
+        if (!resolvedUserId) {
+          missingUsernames.push(data.name || rawId || 'Unknown');
+        } else {
+          const rawStatus = (data.attendance || 'present').toString().trim().toLowerCase();
+          const validStatus = rawStatus === 'absent' ? 'absent' : 'present';
+          attendanceDocuments.push({
+            user_id: resolvedUserId,
+            attendance_status: validStatus,
+            meeting_id: objectMeetingId,
+            date: meetingDate
+          });
+        }
+      }
+
+      if (missingUsernames.length > 0) {
         return res.status(400).json({
           error: `Some users not found: ${missingUsernames.join(', ')}`
         });
       }
 
-      const usernameToIdMap = new Map(users.map(user => [user.username, user._id]));
+      // 4. Perform atomic bulk upsert (idempotent, safe against retries)
+      const bulkOps = attendanceDocuments.map(doc => ({
+        updateOne: {
+          filter: { user_id: doc.user_id, meeting_id: doc.meeting_id },
+          update: { $set: doc },
+          upsert: true
+        }
+      }));
 
-      const attendanceDocuments = usersdata.map(data => {
-        const userId = usernameToIdMap.get(data.name);
-        return {
-          user_id: userId,
-          attendance_status: data.attendance.toLowerCase(),
-          meeting_id: objectMeetingId,
-          date: new Date(date)
-        };
+      await Attendance.bulkWrite(bulkOps);
+
+      res.status(201).json({
+        message: 'Attendances recorded successfully',
+        count: attendanceDocuments.length
       });
-
-      const savedAttendances = await Attendance.insertMany(attendanceDocuments);
-      res.status(201).json({ message: 'Attendances created successfully', savedAttendances });
     } catch (err) {
-      console.log(err)
+      console.error('Error in createbulkattendances:', err);
       res.status(500).json({ error: err.message });
     }
   }
