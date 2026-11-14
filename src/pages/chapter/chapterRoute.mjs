@@ -2,7 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { createChapterValidation, updateChapterValidation, idValidation } from '../../validators.mjs';
 import { handleValidationErrors } from '../../middlewares.mjs';
-import { Region, Chapter } from '../../schemas.mjs';
+import { Region, Chapter, Coordinator } from '../../schemas.mjs';
 import fetch from 'node-fetch';
 
 const router = express.Router();
@@ -35,6 +35,18 @@ router.post('/createchapter', createChapterValidation, handleValidationErrors,
 
       await newGallery.save().catch(err => {
         console.error('Failed to create gallery:', err.message);
+      });
+
+      // Initialize default core team roles
+      const defaultRoles = ['President', 'VP', 'Secretary', 'Treasurer'];
+      await Coordinator.insertMany(
+        defaultRoles.map(role => ({
+          name: 'Not Assigned',
+          role,
+          chapter_id: saved._id
+        }))
+      ).catch(err => {
+        console.error('Failed to create default coordinators for new chapter:', err.message);
       });
 
       res.status(201).json(saved);
