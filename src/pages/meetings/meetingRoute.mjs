@@ -7,6 +7,7 @@ import {
 } from '../../validators.mjs';
 import { handleValidationErrors,  mapNamesToIds } from '../../middlewares.mjs';
 import { Meeting } from '../../schemas.mjs';
+import { autoUpdateMeetingStatuses } from '../../utils/meetingStatusHelper.mjs';
 
 const router = express.Router();
 router.use('/attendance', AttendanceRouter)
@@ -37,9 +38,12 @@ router.post('/createmeeting',
 
 router.get('/getmeetings',  async (req, res) => {
   try {
+    if (req.chapter?._id) {
+      await autoUpdateMeetingStatuses(req.chapter._id);
+    }
     const docs = await Meeting.aggregate([
       { $match: { chapter_id: req.chapter._id } },
-      { $sort: { createdAt: -1 } },
+      { $sort: { meeting_date: -1, createdAt: -1 } },
       {
         $lookup: {
           from: 'chapters',
@@ -73,7 +77,9 @@ router.get('/getmeetings',  async (req, res) => {
 
 router.get('/getfalsemeetings',  async (req, res) => {
   try {
-    
+    if (req.chapter?._id) {
+      await autoUpdateMeetingStatuses(req.chapter._id);
+    }
     const docs = await Meeting.aggregate([
       { $match: { chapter_id: req.chapter._id, attendance_status: false } },
       { $sort: { createdAt: -1 } },
@@ -181,12 +187,14 @@ router.delete('/deletemeetingbyid/:id',  idValidation, handleValidationErrors, a
 
 router.get('/getlatestmeeting', async (req, res) => {
   try {
-    const now = new Date();
+    if (req.chapter?._id) {
+      await autoUpdateMeetingStatuses(req.chapter._id);
+    }
     const [doc] = await Meeting.aggregate([
       {
         $match: {
-          meeting_status: "upcoming",
-          meeting_date: { $gte: now }
+          chapter_id: req.chapter._id,
+          meeting_status: "upcoming"
         }
       },
       { $sort: { meeting_date: 1, meeting_time: 1 } },

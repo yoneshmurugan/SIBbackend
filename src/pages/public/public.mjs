@@ -1,6 +1,7 @@
 import express from 'express';
 import { MemberProfile, Vertical, Chapter, Region, Referral, Membership, TYFTB, Meeting, Event, OneToOneMeeting } from '../../schemas.mjs';
 import mongoose from 'mongoose';
+import { autoUpdateMeetingStatuses } from '../../utils/meetingStatusHelper.mjs';
 
 const Public = express.Router();
 
@@ -388,6 +389,7 @@ Public.get('/showprofile',
 
 Public.get('/getmeetings',  async (req, res) => {
   try {
+    await autoUpdateMeetingStatuses();
     const docs = await Meeting.aggregate([
       { $sort: { createdAt: -1 } },
       {

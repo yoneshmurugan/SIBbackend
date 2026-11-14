@@ -1,3 +1,4 @@
+import { autoUpdateMeetingStatuses } from './meetingStatusHelper.mjs';
 import cron from 'node-cron';
 import { 
     MemberProfile, User, Chapter, Membership, Attendance, 
@@ -419,6 +420,21 @@ const startCronJobs = () => {
     // Run at 00:01 AM on the 1st of every month
     cron.schedule('1 0 1 * *', async () => {
         await ensureAllPastMonthlyBadgesAwarded();
+    }, {
+        scheduled: true,
+        timezone: "Asia/Kolkata"
+    });
+
+    // Run every 15 minutes to automatically transition meetings to 'inprogress' and 'completed'
+    cron.schedule('*/15 * * * *', async () => {
+        try {
+            const res = await autoUpdateMeetingStatuses();
+            if (res.completedCount > 0 || res.inProgressCount > 0) {
+                console.log(`[Meeting Lifecycle] Auto-updated meetings: ${res.completedCount} marked completed, ${res.inProgressCount} in progress.`);
+            }
+        } catch (error) {
+            console.error("Error in automated meeting status cron job:", error);
+        }
     }, {
         scheduled: true,
         timezone: "Asia/Kolkata"
