@@ -165,7 +165,7 @@ AdminRouter.get('/chapter-performance/:id', async (req, res) => {
         const region = await Region.findById(chapter.region_id).select('region_name');
 
         // Get member count
-        const members = await Membership.countDocuments({ chapter_id: chapterId });
+        const members = await Membership.countDocuments({ chapter_id: chapterId, membership_status: true });
 
         // Get referrals count
         const referralsAgg = await Referral.aggregate(

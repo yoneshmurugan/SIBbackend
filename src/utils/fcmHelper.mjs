@@ -11,8 +11,13 @@ export const sendPushNotification = async (receiverIds, title, body, data = {}) 
     try {
         if (!receiverIds || receiverIds.length === 0) return;
 
-        // Fetch users to get their FCM tokens
-        const users = await User.find({ _id: { $in: receiverIds } });
+        // Fetch users to get their FCM tokens (supports both ObjectId and user_id UID)
+        const users = await User.find({
+            $or: [
+                { _id: { $in: receiverIds } },
+                { user_id: { $in: receiverIds } }
+            ]
+        });
         
         let allTokens = [];
         let tokenToUserIdMap = {};
@@ -28,6 +33,16 @@ export const sendPushNotification = async (receiverIds, title, body, data = {}) 
 
         if (allTokens.length === 0) return;
 
+        // Sanitize data payload for FCM: all keys and values MUST be strings
+        const sanitizedData = {};
+        if (data && typeof data === 'object') {
+            for (const [key, val] of Object.entries(data)) {
+                if (val !== undefined && val !== null) {
+                    sanitizedData[String(key)] = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                }
+            }
+        }
+
         // Firebase sendMulticast accepts up to 500 tokens per batch
         const BATCH_SIZE = 500;
         const invalidTokens = [];
@@ -40,11 +55,12 @@ export const sendPushNotification = async (receiverIds, title, body, data = {}) 
                     title,
                     body
                 },
-                data,
+                ...(Object.keys(sanitizedData).length > 0 ? { data: sanitizedData } : {}),
                 apns: {
                     payload: {
                         aps: {
-                            sound: 'default'
+                            sound: 'default',
+                            badge: 1
                         }
                     }
                 },
