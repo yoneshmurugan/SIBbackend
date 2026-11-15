@@ -51,7 +51,9 @@ router.get(
             const filter = {};
             filter.receiver = req.userid;
             if (read !== undefined) filter.read = read;
-            const notifications = await Notification.find(filter).sort({ createdAt: -1 });
+            const notifications = await Notification.find(filter)
+                .populate('sender', 'username name email')
+                .sort({ createdAt: -1 });
             res.json(notifications);
         } catch (err) {
             res.status(500).json({ error: err.message || "Failed to fetch notifications" });
@@ -65,7 +67,8 @@ router.get(
     handleValidationErrors,
     async (req, res) => {
         try {
-            const notif = await Notification.findById(req.params.id);
+            const notif = await Notification.findById(req.params.id)
+                .populate('sender', 'username name email');
             if (!notif) return res.status(404).json({ error: "Notification not found" });
             res.json(notif);
         } catch (err) {
@@ -135,7 +138,8 @@ router.patch(
             const update = { $set: { read: true, readAt: new Date() } };
 
             const result = await Notification.updateMany(filter, update);
-            const notifications = await Notification.find({ receiver: userObj._id })
+            const notifications = await Notification.find({ receiver: req.userid })
+                .populate('sender', 'username name email')
                 .sort({ createdAt: -1 });
 
             res.json({

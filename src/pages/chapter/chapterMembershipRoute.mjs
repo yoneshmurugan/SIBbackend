@@ -1,6 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import { Membership, Chapter, User } from '../../schemas.mjs';
+import { Membership, Chapter, User, MemberProfile } from '../../schemas.mjs';
 import { handleValidationErrors, mapNamesToIds } from '../../middlewares.mjs'
 import {
   idValidation,
@@ -150,6 +150,45 @@ router.get('/getallmemberships', async (req, res) => {
     const docs = await Membership.aggregate(pipeline);
     res.status(200).json(docs);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/findmember/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    if (!username) return res.status(400).json({ error: "Username is required" });
+
+    const user = await User.findOne({
+      $or: [
+        { username: new RegExp(`^${username.trim()}$`, 'i') },
+        { name: new RegExp(`^${username.trim()}$`, 'i') }
+      ]
+    }).lean();
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const membership = await Membership.findOne({ user_id: user._id })
+      .populate('chapter_id')
+      .lean();
+
+    const profile = await MemberProfile.findOne({ user_id: user._id }).lean();
+    const chapter = membership?.chapter_id;
+
+    return res.status(200).json({
+      user_id: user._id,
+      username: user.username,
+      name: user.name,
+      display_name: profile?.display_name || user.name || user.username,
+      company_phone: profile?.company_phone || user.phone_number,
+      chapter_id: chapter?._id ? chapter._id.toString() : null,
+      chapter_name: chapter?.chapter_name || null,
+      chapter_code: chapter?.chapter_code || null
+    });
+  } catch (err) {
+    console.error("findmember error:", err);
     res.status(500).json({ error: err.message });
   }
 });
