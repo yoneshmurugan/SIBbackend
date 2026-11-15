@@ -122,6 +122,9 @@ const userSchema = new mongoose.Schema({
 );
 
 export const User = mongoose.model("users", userSchema);
+try {
+    mongoose.model('User', userSchema);
+} catch (e) {}
 
 const chapterSchema = new mongoose.Schema({
     chapter_name: { type: String, required: true, maxlength: 100 },
@@ -142,6 +145,9 @@ const chapterSchema = new mongoose.Schema({
 );
 
 export const Chapter = mongoose.model('chapters', chapterSchema);
+try {
+    mongoose.model('Chapter', chapterSchema);
+} catch (e) {}
 
 const { Schema, Types, Decimal128 } = mongoose;
 
@@ -351,7 +357,7 @@ const meetingSchema = new Schema(
     {
         chapter_id: {
             type: Types.ObjectId,
-            ref: 'Chapter',
+            ref: 'chapters',
             required: true,
             index: true
         },
@@ -539,13 +545,13 @@ const NotificationSchema = new Schema(
     {
         receiver: {
             type: Types.ObjectId,
-            ref: 'User',
+            ref: 'users',
             required: true,
             index: true,
         },
         sender: {
             type: Types.ObjectId,
-            ref: 'User',
+            ref: 'users',
         },
         header: {
             type: String,
