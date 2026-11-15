@@ -563,6 +563,10 @@ const NotificationSchema = new Schema(
             type: Date,
             default: null,
         },
+        data: {
+            type: Schema.Types.Mixed,
+            default: {},
+        },
     },
     {
         timestamps: true,

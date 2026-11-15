@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/getchapteroverview', async (req, res) => {
 	try {
 
-		const membercount = await Membership.countDocuments({ chapter_id: req.chapter._id });
+		const membercount = await Membership.countDocuments({ chapter_id: req.chapter._id, membership_status: true });
 
 		const now = new Date();
 		const [doc] = await Meeting.aggregate([

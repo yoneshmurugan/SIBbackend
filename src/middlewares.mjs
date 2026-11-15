@@ -59,20 +59,44 @@ export function handleValidationErrors(req, res, next) {
 export async function mapNamesToIds(req, res, next) {
   try {
     if (typeof req.body.receiver === 'string' && req.body.receiver.trim()) {
-      const user = await User.findOne({ username: req.body.receiver }).select('_id');
+      let user = null;
+      if (mongoose.Types.ObjectId.isValid(req.body.receiver)) {
+        user = await User.findById(req.body.receiver).select('_id');
+      }
+      if (!user) {
+        user = await User.findOne({ username: req.body.receiver.trim() }).select('_id');
+      }
+      if (!user) {
+        const profile = await MemberProfile.findOne({ display_name: req.body.receiver.trim() }).select('user_id');
+        if (profile && profile.user_id) {
+          user = await User.findById(profile.user_id).select('_id');
+        }
+      }
       if (!user) {
         return res.status(400).json({
-          errors: [{ type: 'field', path: 'receiver', msg: 'User not found by username' }]
+          errors: [{ type: 'field', path: 'receiver', msg: 'User not found by username, id, or display name' }]
         });
       }
       req.body.receiver = user._id;
     }
 
     if (typeof req.body.sender === 'string' && req.body.sender.trim()) {
-      const user = await User.findOne({ username: req.body.sender }).select('_id');
+      let user = null;
+      if (mongoose.Types.ObjectId.isValid(req.body.sender)) {
+        user = await User.findById(req.body.sender).select('_id');
+      }
+      if (!user) {
+        user = await User.findOne({ username: req.body.sender.trim() }).select('_id');
+      }
+      if (!user) {
+        const profile = await MemberProfile.findOne({ display_name: req.body.sender.trim() }).select('user_id');
+        if (profile && profile.user_id) {
+          user = await User.findById(profile.user_id).select('_id');
+        }
+      }
       if (!user) {
         return res.status(400).json({
-          errors: [{ type: 'field', path: 'sender', msg: 'User not found by username' }]
+          errors: [{ type: 'field', path: 'sender', msg: 'User not found by username, id, or display name' }]
         });
       }
       req.body.sender = user._id;

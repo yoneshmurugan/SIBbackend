@@ -25,7 +25,7 @@ router.post(
     async (req, res) => {
         try {
             const { receiver, sender, header, content, read, readAt, data } = req.body;
-            const notif = new Notification({ receiver, sender, header, content, read, readAt });
+            const notif = new Notification({ receiver, sender, header, content, read, readAt, data });
             await notif.save();
             sendPushNotification([receiver], header, content, data);
             res.status(201).json(notif);
@@ -234,7 +234,7 @@ router.post(
         try {
             req.body.sender = req.userid;
             const { receiver, sender, header, content, read, readAt } = req.body;
-            const notif = new Notification({ receiver, sender, header, content, read, readAt });
+            const notif = new Notification({ receiver, sender, header, content, read, readAt, data });
             await notif.save();
             sendPushNotification([receiver], header, content);
             res.status(201).json(notif);

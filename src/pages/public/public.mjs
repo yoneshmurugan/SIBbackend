@@ -197,7 +197,7 @@ Public.get('/stats', async (req, res) => {
 
     const verticalcount = await Vertical.countDocuments(dateFilter);
     const referralcount = await Referral.countDocuments(dateFilter);
-    const membershipcount = await Membership.countDocuments(dateFilter);
+    const membershipcount = await Membership.countDocuments({ ...dateFilter, membership_status: true });
     const chaptercount = await Chapter.countDocuments(dateFilter);
     const regioncount = await Region.countDocuments(dateFilter);
 

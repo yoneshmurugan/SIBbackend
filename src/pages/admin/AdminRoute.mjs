@@ -56,6 +56,7 @@ AdminRouter.get('/chapter-performance', async (req, res) => {
                 }
             ]),
             Membership.aggregate([
+                { $match: { membership_status: true } },
                 {
                     $group: {
                         _id: '$chapter_id',
