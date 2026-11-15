@@ -55,8 +55,21 @@ export const sendPushNotification = async (receiverIds, title, body, data = {}) 
                     title,
                     body
                 },
+                android: {
+                    priority: 'high',
+                    notification: {
+                        icon: 'ic_launcher',
+                        color: '#d97706',
+                        sound: 'default',
+                        defaultSound: true,
+                        defaultVibrateTimings: true
+                    }
+                },
                 ...(Object.keys(sanitizedData).length > 0 ? { data: sanitizedData } : {}),
                 apns: {
+                    headers: {
+                        'apns-priority': '10'
+                    },
                     payload: {
                         aps: {
                             sound: 'default',

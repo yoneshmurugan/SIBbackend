@@ -142,8 +142,7 @@ export const getPasswordResetTemplate = (resetLink) => `
 `;
 
 export const getAnnouncementTemplate = (header, content) => {
-    // Convert plain text line breaks into HTML breaks, and wrap in paragraphs if needed, 
-    // but a simple replace is often safest for emojis and arbitrary whitespace formatting.
+    // Convert plain text line breaks into HTML breaks
     const htmlContent = content.replace(/\n/g, '<br/>');
 
     return `
@@ -155,36 +154,48 @@ export const getAnnouncementTemplate = (header, content) => {
     <title>\${header}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #111827;">
-    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #f3f4f6; padding: 40px 16px;">
         <tr>
             <td align="center">
-                <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
-                    <!-- Header -->
+                <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04); border: 1px solid #e5e7eb;">
+                    <!-- Brand Header with Official Logo -->
                     <tr>
-                        <td style="background-color: #ffffff; padding: 32px 40px; border-bottom: 1px solid #f3f4f6; text-align: center;">
-                            <img src="https://www.senguntharinbusiness.in/assets/logo.webp" alt="SIB Logo" style="height: 60px; width: auto; max-width: 100%; display: block; margin: 0 auto;">
+                        <td style="background-color: #ffffff; padding: 32px 32px 24px; border-bottom: 1px solid #f3f4f6; text-align: center;">
+                            <img src="https://senguntharinbusiness.in/logo.webp" alt="SIB Logo" width="68" height="68" style="height: 68px; width: 68px; display: block; margin: 0 auto; object-fit: contain;">
+                            <div style="margin-top: 10px; font-size: 13px; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 2px;">Sengunthar In Business</div>
+                            <div style="font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin-top: 3px;">Official Chapter Broadcast</div>
                         </td>
                     </tr>
                     
-                    <!-- Content -->
+                    <!-- Content Area -->
                     <tr>
-                        <td style="padding: 40px;">
-                            <h1 style="margin: 0 0 24px; font-size: 20px; font-weight: 700; color: #111827; text-align: left; border-bottom: 2px solid #059669; padding-bottom: 12px;">\${header}</h1>
+                        <td style="padding: 32px;">
+                            <div style="margin-bottom: 20px;">
+                                <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #111827; text-align: left; border-left: 4px solid #f59e0b; padding-left: 14px; line-height: 1.4;">
+                                    \${header}
+                                </h1>
+                            </div>
                             
-                            <div style="font-size: 16px; line-height: 1.8; color: #374151; text-align: left; white-space: pre-wrap;">
+                            <div style="font-size: 15px; line-height: 1.7; color: #374151; text-align: left; background-color: #fafaf9; border: 1px solid #f0f0ef; border-radius: 12px; padding: 20px; white-space: pre-wrap;">
                                 \${htmlContent}
+                            </div>
+
+                            <div style="margin-top: 24px; text-align: center;">
+                                <a href="https://senguntharinbusiness.in" style="display: inline-block; background-color: #f59e0b; color: #111827; font-weight: 700; font-size: 13px; text-decoration: none; padding: 12px 28px; border-radius: 8px; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);">
+                                    Open SIB Portal
+                                </a>
                             </div>
                         </td>
                     </tr>
                     
                     <!-- Footer -->
                     <tr>
-                        <td style="background-color: #f9fafb; padding: 24px 40px; border-top: 1px solid #f3f4f6; text-align: center;">
-                            <p style="margin: 0 0 8px; font-size: 14px; color: #6b7280;">
-                                Need help? Contact us at <a href="mailto:sibconnect2025@gmail.com" style="color: #059669; text-decoration: none;">sibconnect2025@gmail.com</a>
+                        <td style="background-color: #f9fafb; padding: 24px 32px; border-top: 1px solid #f3f4f6; text-align: center;">
+                            <p style="margin: 0 0 8px; font-size: 13px; color: #6b7280;">
+                                Questions or support? Contact us at <a href="mailto:sibconnect2025@gmail.com" style="color: #b45309; font-weight: 600; text-decoration: none;">sibconnect2025@gmail.com</a>
                             </p>
-                            <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-                                &copy; \${new Date().getFullYear()} Sengundhar in Business. All rights reserved.
+                            <p style="margin: 0; font-size: 11px; color: #9ca3af;">
+                                &copy; \${new Date().getFullYear()} Sengunthar In Business. All rights reserved.
                             </p>
                         </td>
                     </tr>
