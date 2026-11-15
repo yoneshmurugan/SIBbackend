@@ -157,13 +157,17 @@ router.post(
     async (req, res) => {
         try {
             req.body.sender = req.userid;
-            const membership = await Membership.findOne({ user_id: req.userid });
-            if (!membership || !membership.chapter_id) {
+            let chapterId = req.chapter?._id;
+            if (!chapterId) {
+                const membership = await Membership.findOne({ user_id: req.userid });
+                chapterId = membership?.chapter_id;
+            }
+            if (!chapterId) {
                 return res.status(404).json({ error: "Membership or chapter not found." });
             }
 
             const chapterMemberships = await Membership.find({
-                chapter_id: membership.chapter_id,
+                chapter_id: chapterId,
                 membership_status: true
             }, 'user_id');
 
@@ -171,7 +175,7 @@ router.post(
                 return res.status(404).json({ error: "No chapter members found for notifications." });
             }
 
-            const { header, content, read = false, readAt = null, methods } = req.body;
+            const { header, content, read = false, readAt = null, methods, type = "Announcement" } = req.body;
             const inapp = methods?.inapp !== false;
             const push = methods?.push !== false;
             const email = methods?.email === true;
@@ -191,6 +195,11 @@ router.post(
                         sender,
                         header,
                         content,
+                        data: {
+                            action: "OPEN_ANNOUNCEMENT",
+                            type,
+                            chapterId: String(chapterId)
+                        },
                         read,
                         readAt
                     }))
@@ -198,25 +207,41 @@ router.post(
             }
             
             if (push) {
-                sendPushNotification(targetUsers, header, content);
+                sendPushNotification(targetUsers, header, content, {
+                    action: "OPEN_ANNOUNCEMENT",
+                    type
+                }).catch(err => console.error("Push notification error in createbulknotifications:", err));
             }
 
             if (email) {
-                const users = await User.find({ _id: { $in: targetUsers } }, 'email company_email');
-                const emails = users.map(u => u.email || u.company_email).filter(Boolean);
-                
-                if (emails.length > 0) {
-                    const mailOptions = {
-                        from: process.env.GMAIL,
-                        bcc: emails,
-                        subject: header,
-                        html: getAnnouncementTemplate(header, content)
-                    };
-                    transporter.sendMail(mailOptions).catch(err => console.error("Email send error:", err));
+                try {
+                    const users = await User.find({ _id: { $in: targetUsers } }, 'email company_email');
+                    const emails = users.map(u => u.email || u.company_email).filter(Boolean);
+                    
+                    if (emails.length > 0) {
+                        const mailOptions = {
+                            from: process.env.GMAIL,
+                            bcc: emails,
+                            subject: header,
+                            html: getAnnouncementTemplate(header, content)
+                        };
+                        transporter.sendMail(mailOptions).catch(err => console.error("Email send error:", err));
+                    }
+                } catch (emailErr) {
+                    console.error("Email dispatch error:", emailErr);
                 }
             }
             
-            res.status(201).json({ message: "Bulk notifications created.", count: notifications.length });
+            const channelSummaries = [];
+            if (inapp) channelSummaries.push("In-App");
+            if (push) channelSummaries.push("Push");
+            if (email) channelSummaries.push("Email");
+
+            res.status(201).json({
+                message: `Alert broadcast successfully via ${channelSummaries.join(", ")} to ${targetUsers.length} members.`,
+                count: targetUsers.length,
+                channels: channelSummaries
+            });
         } catch (err) {
             res.status(400).json({ error: err.message || "Failed to create notifications" });
         }
