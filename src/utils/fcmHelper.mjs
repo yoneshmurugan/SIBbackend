@@ -62,7 +62,9 @@ export const sendPushNotification = async (receiverIds, title, body, data = {}) 
                         color: '#d97706',
                         sound: 'default',
                         defaultSound: true,
-                        defaultVibrateTimings: true
+                        defaultVibrateTimings: true,
+                        clickAction: 'FCM_PLUGIN_ACTIVITY',
+                        tag: sanitizedData.action || 'GENERAL'
                     }
                 },
                 ...(Object.keys(sanitizedData).length > 0 ? { data: sanitizedData } : {}),
@@ -73,7 +75,8 @@ export const sendPushNotification = async (receiverIds, title, body, data = {}) 
                     payload: {
                         aps: {
                             sound: 'default',
-                            badge: 1
+                            badge: 1,
+                            category: sanitizedData.action || 'GENERAL'
                         }
                     }
                 },
