@@ -233,11 +233,34 @@ router.post(
     async (req, res) => {
         try {
             req.body.sender = req.userid;
-            const { receiver, sender, header, content, read, readAt } = req.body;
-            const notif = new Notification({ receiver, sender, header, content, read, readAt, data });
-            await notif.save();
-            sendPushNotification([receiver], header, content);
-            res.status(201).json(notif);
+            const { receiver, sender, header, content, read, readAt, data } = req.body;
+            const notifyInApp = req.body.notifyInApp !== false;
+            const notifyPush = req.body.notifyPush !== false;
+
+            let notif = null;
+            if (notifyInApp) {
+                notif = new Notification({
+                    receiver,
+                    sender,
+                    header,
+                    content,
+                    read: read || false,
+                    readAt: readAt || null,
+                    data: data || { action: "MEMBERSHIP_RENEWAL" }
+                });
+                await notif.save();
+            }
+
+            if (notifyPush) {
+                sendPushNotification(
+                    [receiver],
+                    header,
+                    content,
+                    data || { action: "MEMBERSHIP_RENEWAL" }
+                ).catch(err => console.error("Push notification error in createnotificationwithoutsender:", err));
+            }
+
+            res.status(201).json(notif || { message: "Push notification dispatched successfully" });
         } catch (err) {
             res.status(400).json({ error: err.message || "Failed to create notification" });
         }

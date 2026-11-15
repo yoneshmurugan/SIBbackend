@@ -421,6 +421,9 @@ export const createNotificationValidation = [
     body("content").exists().withMessage("content required").isString().withMessage("content must be string").isLength({ min: 2, max: 1024 }).withMessage("content must be 2-1024 chars"),
     body("read").optional().isBoolean().withMessage("read must be boolean"),
     body("readAt").optional().isISO8601().withMessage("readAt must be date"),
+    body("notifyInApp").optional().isBoolean().withMessage("notifyInApp must be boolean"),
+    body("notifyPush").optional().isBoolean().withMessage("notifyPush must be boolean"),
+    body("data").optional(),
 ];
 
 export const createbulkNotificationValidation = [
