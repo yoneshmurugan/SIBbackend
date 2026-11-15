@@ -1,12 +1,13 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import { Event, User, Membership, Chapter } from '../../schemas.mjs';
+import { Event, User, Membership, Chapter, Notification } from '../../schemas.mjs';
 import {
     idValidation,
     createEventValidation,
     updateEventValidation
 } from '../../validators.mjs';
-import { mapNamesToIds, handleValidationErrors } from '../../middlewares.mjs'
+import { mapNamesToIds, handleValidationErrors } from '../../middlewares.mjs';
+import { sendPushNotification } from '../../utils/fcmHelper.mjs';
 
 const router = express.Router();
 
@@ -23,6 +24,57 @@ router.post(
             }
             const doc = new Event(req.body);
             const saved = await doc.save();
+
+            // Dispatch In-App & Mobile Push Notifications to Active Chapter Members
+            try {
+                const activeMemberships = await Membership.find({
+                    chapter_id: req.chapter._id,
+                    membership_status: true
+                }, 'user_id');
+
+                const senderId = req.userid;
+                const targetUserIds = activeMemberships
+                    .map(m => m.user_id)
+                    .filter(uid => uid && String(uid) !== String(senderId));
+
+                if (targetUserIds.length > 0) {
+                    const eventDateStr = saved.event_date 
+                        ? new Date(saved.event_date).toLocaleDateString('en-GB') 
+                        : '';
+                    const header = `New Chapter Event: ${saved.event_title}`;
+                    const content = `A new event titled "${saved.event_title}" has been scheduled for ${eventDateStr} at ${saved.event_time || ''}${saved.location ? ` in ${saved.location}` : ''}. Please mark your calendar and join us.`;
+
+                    // 1. In-App Notifications
+                    await Notification.insertMany(
+                        targetUserIds.map(uid => ({
+                            receiver: uid,
+                            sender: senderId,
+                            header,
+                            content,
+                            data: {
+                                action: "OPEN_EVENTS",
+                                eventId: String(saved._id),
+                                chapterId: String(req.chapter._id)
+                            },
+                            read: false
+                        }))
+                    );
+
+                    // 2. Mobile Push Notifications (FCM + APNs)
+                    sendPushNotification(
+                        targetUserIds,
+                        `New Event: ${saved.event_title}`,
+                        `${eventDateStr} at ${saved.event_time || ''} • ${saved.location || req.chapter.chapter_name || 'Chapter Event'}`,
+                        {
+                            action: "OPEN_EVENTS",
+                            eventId: String(saved._id)
+                        }
+                    ).catch(err => console.error("Push notification error on event create:", err));
+                }
+            } catch (notifErr) {
+                console.error("Event notification dispatch error:", notifErr);
+            }
+
             res.status(201).json({
                 message: "success",
                 id: saved._id
@@ -138,6 +190,7 @@ router.get('/getlatestevent', async (req, res) => {
         const [doc] = await Event.aggregate([
             {
                 $match: {
+                    chapter_id: req.chapter._id,
                     event_status: "upcoming",
                     event_date: { $gte: now }
                 }
