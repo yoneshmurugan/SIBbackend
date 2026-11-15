@@ -6,7 +6,8 @@ import {
   createMeetingValidation
 } from '../../validators.mjs';
 import { handleValidationErrors,  mapNamesToIds } from '../../middlewares.mjs';
-import { Meeting } from '../../schemas.mjs';
+import { Meeting, Membership, Notification } from '../../schemas.mjs';
+import { sendPushNotification } from '../../utils/fcmHelper.mjs';
 import { autoUpdateMeetingStatuses } from '../../utils/meetingStatusHelper.mjs';
 
 const router = express.Router();
@@ -18,7 +19,6 @@ router.post('/createmeeting',
   mapNamesToIds,
   
   async (req, res) => {
-    
     req.body.chapter_id = req.chapter._id;
     try {
       if (!req.body.chapter_id) {
@@ -26,6 +26,57 @@ router.post('/createmeeting',
       }
       const meeting = new Meeting(req.body);
       const saved = await meeting.save();
+
+      // Dispatch In-App & Mobile Push Notifications to Active Chapter Members
+      try {
+        const activeMemberships = await Membership.find({
+          chapter_id: req.chapter._id,
+          membership_status: true
+        }, 'user_id');
+
+        const senderId = req.userid;
+        const targetUserIds = activeMemberships
+          .map(m => m.user_id)
+          .filter(uid => uid && String(uid) !== String(senderId));
+
+        if (targetUserIds.length > 0) {
+          const meetingDateStr = saved.meeting_date 
+            ? new Date(saved.meeting_date).toLocaleDateString('en-GB') 
+            : '';
+          const header = `🗓️ New Chapter Meeting: ${saved.title}`;
+          const content = `A new meeting titled "${saved.title}" has been scheduled for ${meetingDateStr} at ${saved.meeting_time || ''}${saved.location ? ` in ${saved.location}` : ''}. Please review the details and ensure your attendance.`;
+
+          // 1. In-App Notifications
+          await Notification.insertMany(
+            targetUserIds.map(uid => ({
+              receiver: uid,
+              sender: senderId,
+              header,
+              content,
+              data: {
+                action: "OPEN_MEETINGS",
+                meetingId: String(saved._id),
+                chapterId: String(req.chapter._id)
+              },
+              read: false
+            }))
+          );
+
+          // 2. Mobile Push Notifications (FCM + APNs)
+          sendPushNotification(
+            targetUserIds,
+            `🗓️ New Meeting: ${saved.title}`,
+            `${meetingDateStr} at ${saved.meeting_time || ''} • ${saved.location || req.chapter.chapter_name || 'Chapter Meeting'}`,
+            {
+              action: "OPEN_MEETINGS",
+              meetingId: String(saved._id)
+            }
+          ).catch(err => console.error("Push notification error on meeting create:", err));
+        }
+      } catch (notifErr) {
+        console.error("Meeting notification dispatch error:", notifErr);
+      }
+
       res.status(201).json({
         message: "success",
         id: saved._id
