@@ -60,7 +60,19 @@ router.get('/getactivity', async (req, res) => {
             { $match: aggregationMatch },
             { $group: { _id: null, totalBusiness: { $sum: "$business_amount" } } }
         ]);
-        const business_made = result[0]?.totalBusiness || 0;
+        const rawBusiness = result[0]?.totalBusiness;
+        let business_made = 0;
+        if (rawBusiness !== undefined && rawBusiness !== null) {
+            if (typeof rawBusiness === 'number') {
+                business_made = isNaN(rawBusiness) ? 0 : rawBusiness;
+            } else if (rawBusiness.$numberDecimal) {
+                business_made = parseFloat(rawBusiness.$numberDecimal) || 0;
+            } else if (rawBusiness.toString) {
+                business_made = parseFloat(rawBusiness.toString()) || 0;
+            } else {
+                business_made = Number(rawBusiness) || 0;
+            }
+        }
 
         return res.status(200).json({ referral_given, referral_received, tyftb_given, tyftb_received, business_made, M2Ms, Visitors });
     } catch (err) {

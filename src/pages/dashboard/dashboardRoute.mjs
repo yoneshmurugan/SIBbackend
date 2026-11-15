@@ -127,6 +127,14 @@ router.get('/getrenewaldate', async (req, res) => {
 	}
 });
 
+const toNumericAmount = (val) => {
+	if (val === undefined || val === null) return 0;
+	if (typeof val === 'number') return isNaN(val) ? 0 : val;
+	if (val.$numberDecimal) return parseFloat(val.$numberDecimal) || 0;
+	if (val.toString) return parseFloat(val.toString()) || 0;
+	return Number(val) || 0;
+};
+
 router.get('/getactivity', async (req, res) => {
 	try {
 		const referral_given = await Referral.countDocuments({ referrer_id: req.userid });
@@ -145,7 +153,7 @@ router.get('/getactivity', async (req, res) => {
 			{ $group: { _id: null, totalBusiness: { $sum: "$business_amount" } } }
 		]);
 
-		const business_made = result[0]?.totalBusiness || 0;
+		const business_made = toNumericAmount(result[0]?.totalBusiness);
 		return res.status(200).json({ referral_given, referral_received, tyftb_given, tyftb_received, business_made, M2Ms, Visitors });
 	} catch (err) {
 		console.error('Error fetching activity:', err);
@@ -408,8 +416,8 @@ router.get('/getactivity/:timeline', async (req, res) => {
 			])
 		]);
 
-		const business_made = (businessAgg[0]?.totalBusiness) || 0;
-		const business_given1 = (business_given[0]?.totalBusiness) || 0
+		const business_made = toNumericAmount(businessAgg[0]?.totalBusiness);
+		const business_given1 = toNumericAmount(business_given[0]?.totalBusiness);
 
 		return res.status(200).json({
 			timeline,
@@ -488,8 +496,8 @@ router.get('/getactivityupcoming/:timeline', async (req, res) => {
 			])
 		]);
 
-		const business_made = (businessAgg[0]?.totalBusiness) || 0;
-		const business_given1 = (business_given[0]?.totalBusiness) || 0
+		const business_made = toNumericAmount(businessAgg[0]?.totalBusiness);
+		const business_given1 = toNumericAmount(business_given[0]?.totalBusiness);
 
 
 		return res.status(200).json({
