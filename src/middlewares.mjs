@@ -60,14 +60,17 @@ export async function mapNamesToIds(req, res, next) {
   try {
     if (typeof req.body.receiver === 'string' && req.body.receiver.trim()) {
       let user = null;
-      if (mongoose.Types.ObjectId.isValid(req.body.receiver)) {
-        user = await User.findById(req.body.receiver).select('_id');
+      const cleanReceiver = req.body.receiver.trim();
+      if (mongoose.Types.ObjectId.isValid(cleanReceiver)) {
+        user = await User.findById(cleanReceiver).select('_id');
       }
       if (!user) {
-        user = await User.findOne({ username: req.body.receiver.trim() }).select('_id');
+        const escaped = cleanReceiver.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        user = await User.findOne({ username: { $regex: new RegExp(`^${escaped}$`, 'i') } }).select('_id');
       }
       if (!user) {
-        const profile = await MemberProfile.findOne({ display_name: req.body.receiver.trim() }).select('user_id');
+        const escaped = cleanReceiver.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const profile = await MemberProfile.findOne({ display_name: { $regex: new RegExp(`^${escaped}$`, 'i') } }).select('user_id');
         if (profile && profile.user_id) {
           user = await User.findById(profile.user_id).select('_id');
         }
@@ -82,14 +85,17 @@ export async function mapNamesToIds(req, res, next) {
 
     if (typeof req.body.sender === 'string' && req.body.sender.trim()) {
       let user = null;
-      if (mongoose.Types.ObjectId.isValid(req.body.sender)) {
-        user = await User.findById(req.body.sender).select('_id');
+      const cleanSender = req.body.sender.trim();
+      if (mongoose.Types.ObjectId.isValid(cleanSender)) {
+        user = await User.findById(cleanSender).select('_id');
       }
       if (!user) {
-        user = await User.findOne({ username: req.body.sender.trim() }).select('_id');
+        const escaped = cleanSender.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        user = await User.findOne({ username: { $regex: new RegExp(`^${escaped}$`, 'i') } }).select('_id');
       }
       if (!user) {
-        const profile = await MemberProfile.findOne({ display_name: req.body.sender.trim() }).select('user_id');
+        const escaped = cleanSender.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const profile = await MemberProfile.findOne({ display_name: { $regex: new RegExp(`^${escaped}$`, 'i') } }).select('user_id');
         if (profile && profile.user_id) {
           user = await User.findById(profile.user_id).select('_id');
         }
@@ -102,7 +108,9 @@ export async function mapNamesToIds(req, res, next) {
       req.body.sender = user._id;
     }
     if (typeof req.body.username === 'string' && req.body.username.trim()) {
-      const user = await User.findOne({ username: req.body.username }).select('_id');
+      const cleanUser = req.body.username.trim();
+      const escaped = cleanUser.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const user = await User.findOne({ username: { $regex: new RegExp(`^${escaped}$`, 'i') } }).select('_id');
       if (!user) {
         return res.status(400).json({
           errors: [{ type: 'field', path: 'username', msg: 'User not found by username' }]

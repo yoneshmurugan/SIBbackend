@@ -6,6 +6,7 @@ import { User } from "../schemas.mjs";
  * @param {Array<String|ObjectId>} receiverIds - Array of user ObjectIds or user_ids
  * @param {String} title - Notification title
  * @param {String} body - Notification body
+ * @param {Object} data - Additional metadata payload
  */
 export const sendPushNotification = async (receiverIds, title, body, data = {}) => {
     try {
@@ -43,7 +44,7 @@ export const sendPushNotification = async (receiverIds, title, body, data = {}) 
             }
         }
 
-        // Firebase sendMulticast accepts up to 500 tokens per batch
+        // Firebase sendEachForMulticast accepts up to 500 tokens per batch
         const BATCH_SIZE = 500;
         const invalidTokens = [];
 
@@ -58,13 +59,13 @@ export const sendPushNotification = async (receiverIds, title, body, data = {}) 
                 android: {
                     priority: 'high',
                     notification: {
-                        icon: 'ic_launcher',
+                        icon: 'ic_stat_notification',
                         color: '#d97706',
                         sound: 'default',
                         defaultSound: true,
-                        defaultVibrateTimings: true,
-                        clickAction: 'FCM_PLUGIN_ACTIVITY',
-                        tag: sanitizedData.action || 'GENERAL'
+                        defaultVibrateTimings: true
+                        // NOTE: Do NOT set clickAction: 'FCM_PLUGIN_ACTIVITY' so Capacitor routes directly to MainActivity.
+                        // NOTE: Do NOT set a static tag so Android does not collapse/overwrite subsequent notifications.
                     }
                 },
                 ...(Object.keys(sanitizedData).length > 0 ? { data: sanitizedData } : {}),
@@ -103,7 +104,6 @@ export const sendPushNotification = async (receiverIds, title, body, data = {}) 
 
         // Cleanup invalid tokens from database
         if (invalidTokens.length > 0) {
-            // Group tokens by user to perform bulk update
             for (const user of users) {
                 const userTokensToRemove = invalidTokens.filter(t => user.fcmTokens.includes(t));
                 if (userTokensToRemove.length > 0) {
