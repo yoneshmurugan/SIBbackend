@@ -59,6 +59,7 @@ export const sendPushNotification = async (receiverIds, title, body, data = {}) 
                 android: {
                     priority: 'high',
                     notification: {
+                        channelId: 'sib_notifications',
                         icon: 'ic_stat_notification',
                         color: '#d97706',
                         sound: 'default',
