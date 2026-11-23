@@ -1075,3 +1075,17 @@ const earnedBadgeSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 export const EarnedBadge = mongoose.model('EarnedBadge', earnedBadgeSchema);
+
+// -------------------------------------------------------------
+// INQUIRY / CONTACT US SUBMISSIONS
+// -------------------------------------------------------------
+const inquirySchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    phone: { type: String, default: '' },
+    business: { type: String, default: '' },
+    message: { type: String, required: true },
+    status: { type: String, default: 'new', enum: ['new', 'read', 'replied'] }
+}, { timestamps: true });
+
+export const Inquiry = mongoose.model('Inquiry', inquirySchema);

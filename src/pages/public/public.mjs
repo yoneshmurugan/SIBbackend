@@ -1,5 +1,6 @@
+import transporter from '../Auth/transporter.mjs';
 import express from 'express';
-import { MemberProfile, Vertical, Chapter, Region, Referral, Membership, TYFTB, Meeting, Event, OneToOneMeeting } from '../../schemas.mjs';
+import { MemberProfile, Vertical, Chapter, Region, Referral, Membership, TYFTB, Meeting, Event, OneToOneMeeting, Inquiry } from '../../schemas.mjs';
 import mongoose from 'mongoose';
 import { autoUpdateMeetingStatuses } from '../../utils/meetingStatusHelper.mjs';
 
@@ -647,6 +648,95 @@ Public.get('/upcoming-celebrations', async (req, res) => {
   } catch (err) {
     console.error('Error in /upcoming-celebrations:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+
+Public.post('/contact-us', async (req, res) => {
+  try {
+    const { name, email, phone, business, message } = req.body;
+
+    if (!name || !email || !message) {
+      return res.status(400).json({ error: "Name, email, and message are required." });
+    }
+
+    // 1. Save to database for permanent record
+    const inquiry = await Inquiry.create({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone ? String(phone).trim() : '',
+      business: business ? String(business).trim() : '',
+      message: message.trim()
+    });
+
+    // 2. Format email notification
+    const recipientEmail = process.env.CONTACT_EMAIL || "senguntharinbusinesserode@gmail.com";
+    
+    const mailOptions = {
+      from: `"SIB Website Contact" <${process.env.GMAIL}>`,
+      to: recipientEmail,
+      replyTo: email.trim(),
+      subject: `New SIB Contact Inquiry from ${name.trim()}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+          <div style="background-color: #0a2342; padding: 24px; text-align: center;">
+            <h2 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 700;">New Contact Form Submission</h2>
+            <p style="color: #d4b896; margin: 6px 0 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Sengunthar In Business</p>
+          </div>
+          
+          <div style="padding: 24px; background-color: #ffffff;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 13px; width: 130px; font-weight: bold;">Full Name:</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #111827; font-size: 14px; font-weight: 600;">${name.trim()}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 13px; font-weight: bold;">Email Address:</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #111827; font-size: 14px;"><a href="mailto:${email.trim()}" style="color: #0a2342; text-decoration: none;">${email.trim()}</a></td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 13px; font-weight: bold;">Phone Number:</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #111827; font-size: 14px;">${phone ? String(phone).trim() : 'Not provided'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 13px; font-weight: bold;">Business Name:</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #111827; font-size: 14px;">${business ? String(business).trim() : 'Not provided'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 14px 0 6px 0; color: #6b7280; font-size: 13px; font-weight: bold;" colspan="2">Message:</td>
+              </tr>
+              <tr>
+                <td colspan="2" style="background-color: #f9fafb; padding: 16px; border-radius: 8px; color: #374151; font-size: 14px; line-height: 1.6; border: 1px solid #e5e7eb;">
+                  ${message.trim().replace(/\n/g, '<br/>')}
+                </td>
+              </tr>
+            </table>
+
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center;">
+              <a href="mailto:${email.trim()}?subject=Re: Your inquiry to Sengunthar In Business" style="display: inline-block; background-color: #0a2342; color: #ffffff; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: bold;">
+                Reply Directly via Email
+              </a>
+            </div>
+          </div>
+          
+          <div style="background-color: #f9fafb; padding: 14px 24px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 11px; color: #9ca3af;">
+            Received from SIB Official Website Contact Form &bull; Logged in MongoDB
+          </div>
+        </div>
+      `
+    };
+
+    transporter.sendMail(mailOptions).catch(err => {
+      console.error("Error sending contact email notification:", err);
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Thank you for reaching out! Your message has been sent successfully."
+    });
+  } catch (error) {
+    console.error("Error handling /public/contact-us:", error);
+    res.status(500).json({ error: "Failed to process your request. Please try again later." });
   }
 });
 
