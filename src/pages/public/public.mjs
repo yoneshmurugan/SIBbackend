@@ -680,11 +680,28 @@ Public.post('/contact-us', async (req, res) => {
     const senderEmail = process.env.GMAIL || "sibconnect2025@gmail.com";
     const recipientEmail = process.env.CONTACT_EMAIL || "senguntharinbusinesserode@gmail.com";
     
+    const plainText = [
+      "NEW CONTACT FORM SUBMISSION - SENGUNTHAR IN BUSINESS (SIB)",
+      "---------------------------------------------------------",
+      `Date & Time Filled: ${submissionDate}`,
+      `Full Name:          ${name.trim()}`,
+      `Email Address:      ${email.trim()}`,
+      `Phone Number:       ${phone ? String(phone).trim() : "Not provided"}`,
+      `Business Name:      ${business ? String(business).trim() : "Not provided"}`,
+      "",
+      "Message:",
+      message.trim(),
+      "",
+      "---------------------------------------------------------",
+      "Received from SIB Official Website Contact Form. Logged in MongoDB."
+    ].join("\n");
+
     const mailOptions = {
       from: `"SIB Website Contact" <${senderEmail}>`,
       to: recipientEmail,
       replyTo: email.trim(),
-      subject: `New SIB Contact Inquiry from ${name.trim()}`,
+      subject: `New SIB Contact Inquiry from ${name.trim()} (${submissionDate})`,
+      text: plainText,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
           <div style="background-color: #0a2342; padding: 24px; text-align: center;">
