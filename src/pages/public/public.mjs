@@ -660,7 +660,14 @@ Public.post('/contact-us', async (req, res) => {
       return res.status(400).json({ error: "Name, email, and message are required." });
     }
 
-    // 1. Save to database for permanent record
+    // 1. Format date and time of submission (IST)
+    const submissionDate = new Date().toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      dateStyle: 'full',
+      timeStyle: 'medium'
+    });
+
+    // 2. Save to database for permanent record
     const inquiry = await Inquiry.create({
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -669,11 +676,12 @@ Public.post('/contact-us', async (req, res) => {
       message: message.trim()
     });
 
-    // 2. Format email notification
+    // 3. Format email notification
+    const senderEmail = process.env.GMAIL || "sibconnect2025@gmail.com";
     const recipientEmail = process.env.CONTACT_EMAIL || "senguntharinbusinesserode@gmail.com";
     
     const mailOptions = {
-      from: `"SIB Website Contact" <${process.env.GMAIL}>`,
+      from: `"SIB Website Contact" <${senderEmail}>`,
       to: recipientEmail,
       replyTo: email.trim(),
       subject: `New SIB Contact Inquiry from ${name.trim()}`,
@@ -687,7 +695,11 @@ Public.post('/contact-us', async (req, res) => {
           <div style="padding: 24px; background-color: #ffffff;">
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
-                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 13px; width: 130px; font-weight: bold;">Full Name:</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 13px; width: 140px; font-weight: bold;">Date & Time Filled:</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #111827; font-size: 14px; font-weight: 600;">${submissionDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 13px; width: 140px; font-weight: bold;">Full Name:</td>
                 <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #111827; font-size: 14px; font-weight: 600;">${name.trim()}</td>
               </tr>
               <tr>
@@ -726,9 +738,13 @@ Public.post('/contact-us', async (req, res) => {
       `
     };
 
-    transporter.sendMail(mailOptions).catch(err => {
-      console.error("Error sending contact email notification:", err);
-    });
+    // 4. Await email delivery so serverless runtimes (e.g. Vercel) don't terminate prematurely
+    try {
+      const emailInfo = await transporter.sendMail(mailOptions);
+      console.log("Contact email sent successfully:", emailInfo.messageId, emailInfo.response);
+    } catch (emailErr) {
+      console.error("Error sending contact email notification:", emailErr);
+    }
 
     res.status(200).json({
       success: true,

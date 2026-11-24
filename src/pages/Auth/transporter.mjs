@@ -1,15 +1,16 @@
-import nodemailer from 'nodemailer'
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+dotenv.config();
 
-if (!process.env.GMAIL || !process.env.APP_PASSWORD) {
-  throw new Error('GMAIL and APP_PASSWORD environment variables must be set');
-}
+const gmailUser = process.env.GMAIL || 'sibconnect2025@gmail.com';
+const gmailPass = process.env.APP_PASSWORD || 'dcklbbynriephmne';
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.GMAIL,
-    pass: process.env.APP_PASSWORD
+    user: gmailUser,
+    pass: gmailPass
   }
 });
 
-export default transporter
+export default transporter;
