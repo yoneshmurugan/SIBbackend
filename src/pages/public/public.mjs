@@ -660,6 +660,20 @@ Public.post('/contact-us', async (req, res) => {
       return res.status(400).json({ error: "Name, email, and message are required." });
     }
 
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ error: "Please enter a valid email address." });
+    }
+
+    if (phone) {
+      const cleanPhone = String(phone).replace(/[\s\-()]/g, "");
+      const isIndian = /^(?:\+?91|0)?[6-9]\d{9}$/.test(cleanPhone);
+      const isIntl = /^\+?[1-9]\d{9,14}$/.test(cleanPhone);
+      if (!isIndian && !isIntl) {
+        return res.status(400).json({ error: "Please enter a valid 10-digit phone number." });
+      }
+    }
+
     // 1. Format date and time of submission (IST)
     const submissionDate = new Date().toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata',
